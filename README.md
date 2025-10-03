@@ -39,15 +39,15 @@ In github (manual)
 
 - [ ] Add integration testing secrets in Github (ask Chester for help)
 - [ ] Add partner collaborators in Github (ask Chester for help)
-- [ ] "Allow auto-merge" in General Settings 
-- [ ] Only "Allow squash merging" in General Settings
+- [x] "Allow auto-merge" in General Settings 
+- [x] Only "Allow squash merging" in General Settings
 - [ ] Set up ruleset matching CI build (ask Chester for help)
     - name: ci build
     - enforcement: active
     - bypass: write
     - target: default branch
     - rules: restrict deletions, require status checks ("CI Success"), block force pushes
-- [ ] Set up ruleset
+- [x] Set up ruleset
     - name: require prs
     - enforcement: active
     - bypass: none
