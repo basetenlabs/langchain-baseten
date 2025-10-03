@@ -1,8 +1,8 @@
-# 🦜️🔗 LangChain {partner}
+# 🦜️🔗 LangChain Baseten
 
-This repository contains 1 package with {partner} integrations with LangChain:
+This repository contains 1 package with Baseten integrations with LangChain:
 
-- [langchain-{package_lower}](https://pypi.org/project/langchain-{package_lower}/)
+- [langchain-baseten](https://pypi.org/project/langchain-baseten/)
 
 ## Initial Repo Checklist (Remove this section after completing)
 
@@ -18,22 +18,22 @@ see [these docs](https://python.langchain.com/docs/contributing/integrations#par
 
 Code (auto ecli)
 
-- [ ] Fill out the readme above (for folks that follow pypi link)
-- [ ] Copy package into /libs folder
-- [ ] Update `"Source Code"` and `repository` under `[project.urls]` in /libs/*/pyproject.toml
+- [x] Fill out the readme above (for folks that follow pypi link)
+- [x] Copy package into /libs folder
+- [x] Update `"Source Code"` and `repository` under `[project.urls]` in /libs/*/pyproject.toml (needs changing if we make langchain-ai the parent org)
 
 Workflow code (auto ecli)
 
-- [ ] Populate .github/workflows/_release.yml with `on.workflow_dispatch.inputs.working-directory.default`
-- [ ] Configure `LIB_DIRS` in .github/scripts/check_diff.py
+- [x] Populate .github/workflows/_release.yml with `on.workflow_dispatch.inputs.working-directory.default`
+- [x] Configure `LIB_DIRS` in .github/scripts/check_diff.py
 
 Workflow code (manual)
 
-- [ ] Add secrets as env vars in .github/workflows/_release.yml
+- [x] Add secrets as env vars in .github/workflows/_release.yml
 
 Monorepo workflow code (manual)
 
-- [ ] Pull in new code location, remove old in .github/workflows/api_doc_build.yml
+- [?] Pull in new code location, remove old in .github/workflows/api_doc_build.yml (couldn't find relevant lines in monorepo)
 
 In github (manual)
 
