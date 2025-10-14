@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Union
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import secret_from_env
@@ -35,7 +35,7 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                 built-in error correction.
 
        Key init args — client params:
-           baseten_api_key: SecretStr
+           api_key: SecretStr
                 Baseten API key. If not passed in will be read from env var
                 ``BASETEN_API_KEY``.
 
@@ -169,13 +169,12 @@ class BasetenEmbeddings(BaseModel, Embeddings):
     """
 
     client: Any = Field(default=None, exclude=True)  # :meta private:
-    baseten_api_key: SecretStr = Field(
-        alias="api_key",
+    api_key: Union[str, SecretStr] = Field(
         default_factory=secret_from_env(
             "BASETEN_API_KEY",
             error_message=(
                 "You must specify an api key. "
-                "You can pass it an argument as `baseten_api_key=...` or "
+                "You can pass it an argument as `api_key=...` or "
                 "set the environment variable `BASETEN_API_KEY`."
             ),
         ),
@@ -241,7 +240,12 @@ class BasetenEmbeddings(BaseModel, Embeddings):
 
         # Create Performance Client
         self.client = PerformanceClient(
-            base_url=base_url, api_key=self.baseten_api_key.get_secret_value()
+            base_url=base_url,
+            api_key=(
+                self.api_key.get_secret_value()
+                if isinstance(self.api_key, SecretStr)
+                else self.api_key
+            ),
         )
         return self
 

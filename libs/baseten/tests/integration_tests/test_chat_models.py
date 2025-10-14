@@ -18,7 +18,7 @@ def test_chat_baseten_invoke() -> None:
 
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=50,
     )
@@ -40,7 +40,7 @@ def test_chat_baseten_stream() -> None:
 
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=50,
         streaming=True,
@@ -50,7 +50,7 @@ def test_chat_baseten_stream() -> None:
     chunks = list(chat.stream([message]))
 
     assert len(chunks) > 0
-    content = "".join(chunk.content for chunk in chunks)
+    content = "".join(str(chunk.content) for chunk in chunks)
     assert len(content) > 0
 
 
@@ -64,7 +64,7 @@ async def test_chat_baseten_ainvoke() -> None:
 
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=50,
     )
@@ -86,7 +86,7 @@ async def test_chat_baseten_astream() -> None:
 
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=50,
         streaming=True,
@@ -96,7 +96,7 @@ async def test_chat_baseten_astream() -> None:
     chunks = [chunk async for chunk in chat.astream([message])]
 
     assert len(chunks) > 0
-    content = "".join(chunk.content for chunk in chunks)
+    content = "".join(str(chunk.content) for chunk in chunks)
     assert len(content) > 0
 
 
@@ -116,7 +116,7 @@ def test_chat_baseten_dedicated_url_invoke() -> None:
     chat = ChatBaseten(
         model="dedicated-model",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=50,
     )
@@ -144,7 +144,7 @@ def test_chat_baseten_dedicated_url_stream() -> None:
     chat = ChatBaseten(
         model="dedicated-model",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
         temperature=0,
         max_tokens=30,
         streaming=True,
@@ -154,5 +154,5 @@ def test_chat_baseten_dedicated_url_stream() -> None:
     chunks = list(chat.stream([message]))
 
     assert len(chunks) > 0
-    content = "".join(chunk.content for chunk in chunks)
+    content = "".join(str(chunk.content) for chunk in chunks)
     assert len(content) > 0

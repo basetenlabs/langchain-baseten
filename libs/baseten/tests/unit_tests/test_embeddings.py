@@ -12,7 +12,7 @@ def test_baseten_embeddings_init() -> None:
     embeddings = BasetenEmbeddings(
         model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
     assert embeddings.model == "test-model"
     assert (
@@ -43,9 +43,9 @@ def test_baseten_embeddings_init_missing_api_key() -> None:
 def test_baseten_embeddings_init_missing_model_url() -> None:
     """Test BasetenEmbeddings initialization with missing model URL."""
     with pytest.raises(ValueError, match="Field required"):
-        BasetenEmbeddings(
+        BasetenEmbeddings(  # type: ignore[call-arg]
             model="test-model",
-            baseten_api_key="test_key",
+            api_key="test_key",
         )
 
 
@@ -55,7 +55,7 @@ def test_baseten_embeddings_url_normalization() -> None:
     embeddings1 = BasetenEmbeddings(
         model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
     # Performance Client should be initialized with /sync URL (without /v1)
     assert embeddings1.client is not None
@@ -64,7 +64,7 @@ def test_baseten_embeddings_url_normalization() -> None:
     embeddings2 = BasetenEmbeddings(
         model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
     assert embeddings2.client is not None
 
@@ -74,7 +74,7 @@ def test_baseten_embeddings_empty_documents() -> None:
     embeddings = BasetenEmbeddings(
         model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
 
     result = embeddings.embed_documents([])

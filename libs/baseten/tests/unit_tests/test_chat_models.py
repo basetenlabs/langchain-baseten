@@ -11,7 +11,7 @@ def test_chat_baseten_init() -> None:
     """Test ChatBaseten initialization."""
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key="test_key",
+        api_key="test_key",
         temperature=0.7,
         max_tokens=100,
     )
@@ -40,7 +40,7 @@ def test_chat_baseten_params() -> None:
     """Test ChatBaseten parameters."""
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key="test_key",
+        api_key="test_key",
         temperature=0.5,
         max_tokens=200,
         top_p=0.9,
@@ -61,7 +61,7 @@ def test_chat_baseten_identifying_params() -> None:
     """Test ChatBaseten identifying parameters."""
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key="test_key",
+        api_key="test_key",
         temperature=0.5,
         max_tokens=200,
     )
@@ -83,7 +83,7 @@ def test_chat_baseten_llm_type() -> None:
     """Test ChatBaseten LLM type."""
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
     assert chat._llm_type == "baseten-chat"
 
@@ -93,7 +93,7 @@ def test_chat_baseten_dedicated_model_url() -> None:
     chat = ChatBaseten(
         model="custom-model",
         model_url="https://model-123.api.baseten.co/environments/production/predict",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
 
     # Should use the dedicated URL, converted to OpenAI-compatible format
@@ -107,7 +107,7 @@ def test_chat_baseten_model_apis_default() -> None:
     """Test ChatBaseten uses Model APIs by default."""
     chat = ChatBaseten(
         model="deepseek-ai/DeepSeek-V3-0324",
-        baseten_api_key="test_key",
+        api_key="test_key",
     )
 
     # Should use the default Model APIs base URL

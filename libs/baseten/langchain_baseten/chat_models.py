@@ -223,7 +223,7 @@ class ChatBaseten(BaseChatModel):
             Max number of tokens to generate.
 
     Key init args — client params:
-        baseten_api_key: Optional[SecretStr]
+        api_key: Optional[SecretStr]
             Baseten API key. If not passed in will be read from env var
             ``BASETEN_API_KEY``.
         baseten_api_base: Optional[str]
@@ -430,7 +430,7 @@ class ChatBaseten(BaseChatModel):
 
     client: Any = Field(default=None, exclude=True)  #: :meta private:
     async_client: Any = Field(default=None, exclude=True)  #: :meta private:
-    model: str = Field(alias="model_name")
+    model: str
     """Model name to use."""
     temperature: float = 0.7
     """What sampling temperature to use."""
@@ -446,13 +446,12 @@ class ChatBaseten(BaseChatModel):
     """How many completions to generate for each prompt."""
     model_kwargs: dict[str, Any] = Field(default_factory=dict)
     """Holds any model parameters valid for `create` call not explicitly specified."""
-    baseten_api_key: SecretStr = Field(
-        alias="api_key",
+    api_key: Union[str, SecretStr] = Field(
         default_factory=secret_from_env(
             "BASETEN_API_KEY",
             error_message=(
                 "You must specify an api key. "
-                "You can pass it an argument as `baseten_api_key=...` or "
+                "You can pass it an argument as `api_key=...` or "
                 "set the environment variable `BASETEN_API_KEY`."
             ),
         ),
@@ -517,7 +516,11 @@ class ChatBaseten(BaseChatModel):
 
         # Create OpenAI clients configured for Baseten
         client_params: dict[str, Any] = {
-            "api_key": self.baseten_api_key.get_secret_value(),
+            "api_key": (
+                self.api_key.get_secret_value()
+                if isinstance(self.api_key, SecretStr)
+                else self.api_key
+            ),
             "base_url": base_url,
             "max_retries": self.max_retries,
         }

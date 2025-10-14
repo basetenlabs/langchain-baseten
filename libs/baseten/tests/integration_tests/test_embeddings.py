@@ -23,7 +23,7 @@ def test_baseten_embeddings_embed_documents() -> None:
     embeddings = BasetenEmbeddings(
         model="embeddings",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
     )
 
     texts = ["Hello world", "How are you?"]
@@ -51,7 +51,7 @@ def test_baseten_embeddings_embed_query() -> None:
     embeddings = BasetenEmbeddings(
         model="embeddings",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
     )
 
     result = embeddings.embed_query("Hello world")
@@ -76,7 +76,7 @@ async def test_baseten_embeddings_aembed_documents() -> None:
     embeddings = BasetenEmbeddings(
         model="embeddings",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
     )
 
     texts = ["Hello world", "How are you?"]
@@ -104,7 +104,7 @@ async def test_baseten_embeddings_aembed_query() -> None:
     embeddings = BasetenEmbeddings(
         model="embeddings",
         model_url=model_url,
-        baseten_api_key=api_key,
+        api_key=api_key,
     )
 
     result = await embeddings.aembed_query("Hello world")
