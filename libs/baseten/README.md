@@ -31,7 +31,8 @@ chat = ChatBaseten(
 chat = ChatBaseten(
     model_url="https://model-<id>.api.baseten.co/environments/production/predict",
     api_key="your-api-key",
-    # `model` parameter is optional for most dedicated models, but may required for specific models like "openai/gpt-oss-20b", please check APIs endpoint example for your deployment for guidance.
+
+ 
 )
 
 # Use the chat model
