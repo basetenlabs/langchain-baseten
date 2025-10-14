@@ -89,9 +89,7 @@ async def test_chat_baseten_astream() -> None:
     )
 
     message = HumanMessage(content="Count from 1 to 5")
-    chunks = []
-    async for chunk in chat.astream([message]):
-        chunks.append(chunk)
+    chunks = [chunk async for chunk in chat.astream([message])]
 
     assert len(chunks) > 0
     content = "".join(chunk.content for chunk in chunks)

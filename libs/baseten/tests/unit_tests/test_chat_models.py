@@ -97,8 +97,10 @@ def test_chat_baseten_dedicated_model_url() -> None:
     )
 
     # Should use the dedicated URL, converted to OpenAI-compatible format
-    expected_base_url = "https://model-123.api.baseten.co/environments/production/sync/v1"
-    assert str(chat.client._base_url).rstrip('/') == expected_base_url
+    expected_base_url = (
+        "https://model-123.api.baseten.co/environments/production/sync/v1"
+    )
+    assert str(chat.client._base_url).rstrip("/") == expected_base_url
 
 
 def test_chat_baseten_model_apis_default() -> None:
@@ -110,4 +112,4 @@ def test_chat_baseten_model_apis_default() -> None:
 
     # Should use the default Model APIs base URL
     expected_base_url = "https://inference.baseten.co/v1"
-    assert str(chat.client._base_url).rstrip('/') == expected_base_url
+    assert str(chat.client._base_url).rstrip("/") == expected_base_url

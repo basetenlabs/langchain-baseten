@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Iterator, Mapping
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from operator import itemgetter
 from typing import Any, Callable, Literal, Optional, Union
 
@@ -96,7 +96,7 @@ def _convert_dict_to_message(_dict: Mapping[str, Any]) -> BaseMessage:
             content=_dict.get("content", ""),
             tool_call_id=_dict.get("tool_call_id", ""),
         )
-    return ChatMessage(content=_dict.get("content", ""), role=role)
+    return ChatMessage(content=_dict.get("content", ""), role=role or "")
 
 
 def _convert_message_to_dict(message: BaseMessage) -> dict:
@@ -193,11 +193,13 @@ def _convert_delta_to_message_chunk(
     if role == "system" or default_class == SystemMessageChunk:
         return SystemMessageChunk(content=content)
     if role == "function" or default_class == FunctionMessageChunk:
-        return FunctionMessageChunk(content=content, name=_dict.get("name"))
+        return FunctionMessageChunk(content=content, name=_dict.get("name") or "")
     if role == "tool" or default_class == ToolMessageChunk:
-        return ToolMessageChunk(content=content, tool_call_id=_dict.get("tool_call_id"))
+        return ToolMessageChunk(
+            content=content, tool_call_id=_dict.get("tool_call_id") or ""
+        )
     if role or default_class == ChatMessageChunk:
-        return ChatMessageChunk(content=content, role=role)
+        return ChatMessageChunk(content=content, role=role or "")
     return default_class(content=content)  # type: ignore[call-arg]
 
 
@@ -511,15 +513,18 @@ class ChatBaseten(BaseChatModel):
                     base_url = f"{base_url}/v1"
         else:
             # Use general Model APIs
-            base_url = self.baseten_api_base
+            base_url = self.baseten_api_base or "https://inference.baseten.co/v1"
 
         # Create OpenAI clients configured for Baseten
-        client_params = {
+        client_params: dict[str, Any] = {
             "api_key": self.baseten_api_key.get_secret_value(),
             "base_url": base_url,
-            "timeout": self.request_timeout,
             "max_retries": self.max_retries,
         }
+
+        # Add timeout if specified
+        if self.request_timeout is not None:
+            client_params["timeout"] = self.request_timeout
 
         self.client = OpenAI(**client_params)
         self.async_client = AsyncOpenAI(**client_params)
@@ -610,7 +615,7 @@ class ChatBaseten(BaseChatModel):
         _message_dicts, params = self._create_message_dicts(messages, stop)
         params = {**params, **kwargs, "stream": True}
 
-        default_chunk_class = AIMessageChunk
+        default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
         for chunk in self.client.chat.completions.create(**params):
             if not isinstance(chunk.choices, list) or len(chunk.choices) == 0:
                 continue
@@ -621,7 +626,7 @@ class ChatBaseten(BaseChatModel):
             message_chunk = _convert_delta_to_message_chunk(
                 chunk_dict, default_chunk_class
             )
-            default_chunk_class = message_chunk.__class__
+            default_chunk_class = type(message_chunk)
             chunk_generation_info = {}
             if choice.finish_reason is not None:
                 chunk_generation_info["finish_reason"] = choice.finish_reason
@@ -664,7 +669,7 @@ class ChatBaseten(BaseChatModel):
         _message_dicts, params = self._create_message_dicts(messages, stop)
         params = {**params, **kwargs, "stream": True}
 
-        default_chunk_class = AIMessageChunk
+        default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
         async for chunk in await self.async_client.chat.completions.create(**params):
             if not isinstance(chunk.choices, list) or len(chunk.choices) == 0:
                 continue
@@ -675,7 +680,7 @@ class ChatBaseten(BaseChatModel):
             message_chunk = _convert_delta_to_message_chunk(
                 chunk_dict, default_chunk_class
             )
-            default_chunk_class = message_chunk.__class__
+            default_chunk_class = type(message_chunk)
             chunk_generation_info = {}
             if choice.finish_reason is not None:
                 chunk_generation_info["finish_reason"] = choice.finish_reason
@@ -725,7 +730,7 @@ class ChatBaseten(BaseChatModel):
 
     def bind_tools(
         self,
-        tools: list[Union[dict[str, Any], type[BaseModel], Callable, BaseTool]],
+        tools: Sequence[Union[dict[str, Any], type, Callable[..., Any], BaseTool]],
         *,
         tool_choice: Optional[Union[dict, str, bool]] = None,
         **kwargs: Any,
@@ -823,8 +828,11 @@ class ChatBaseten(BaseChatModel):
             tool_name = formatted_tool["function"]["name"]
             llm = self.bind_tools([schema], tool_choice=tool_name)
             if is_pydantic_schema:
+                # schema is guaranteed to be type[BaseModel] here
+                pydantic_schema = schema  # type: ignore[assignment]
                 output_parser: OutputParserLike = PydanticToolsParser(
-                    tools=[schema], first_tool_only=True
+                    tools=[pydantic_schema],  # type: ignore[list-item]
+                    first_tool_only=True,
                 )
             else:
                 output_parser = JsonOutputKeyToolsParser(
@@ -841,18 +849,20 @@ class ChatBaseten(BaseChatModel):
             llm = self.bind(
                 response_format={"type": "json_object", "schema": formatted_schema}
             )
-            output_parser = (
-                PydanticOutputParser(pydantic_object=schema)
-                if is_pydantic_schema
-                else JsonOutputParser()
-            )
+            if is_pydantic_schema:
+                # schema is guaranteed to be type[BaseModel] here
+                pydantic_schema = schema  # type: ignore[assignment]
+                output_parser = PydanticOutputParser(pydantic_object=pydantic_schema)  # type: ignore[arg-type]
+            else:
+                output_parser = JsonOutputParser()
         elif method == "json_mode":
             llm = self.bind(response_format={"type": "json_object"})
-            output_parser = (
-                PydanticOutputParser(pydantic_object=schema)
-                if is_pydantic_schema
-                else JsonOutputParser()
-            )
+            if is_pydantic_schema:
+                # schema is guaranteed to be type[BaseModel] here
+                pydantic_schema = schema  # type: ignore[assignment]
+                output_parser = PydanticOutputParser(pydantic_object=pydantic_schema)  # type: ignore[arg-type]
+            else:
+                output_parser = JsonOutputParser()
         else:
             msg = (
                 f"Unrecognized method argument. Expected one of 'function_calling', "

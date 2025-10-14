@@ -8,19 +8,20 @@ This repository contains 1 package with Baseten integrations with LangChain:
 
 Welcome to the LangChain Partner Integration Repository! This checklist will help you get started with your new repository.
 
-After creating your repo from the integration-repo-template, we'll go through the following steps:
-
-1. Setting up your new repository in GitHub
-2. 
+After creating your repo from the integration-repo-template, we'll go through how to
+set up your new repository in Github.
 
 This setup assumes that the partner package is already split. For those instructions,
-see [these docs](https://python.langchain.com/docs/contributing/integrations#partner-packages).
+see [these docs](https://docs.langchain.com/oss/python/contributing/integrations-langchain).
+
+> [!NOTE]
+> Integration packages can be managed in your own Github organization.
 
 Code (auto ecli)
 
 - [x] Fill out the readme above (for folks that follow pypi link)
 - [x] Copy package into /libs folder
-- [x] Update `"Source Code"` and `repository` under `[project.urls]` in /libs/*/pyproject.toml (needs changing if we make langchain-ai the parent org)
+- [x] Update `"Source Code"` and `repository` under `[project.urls]` in /libs/*/pyproject.toml
 
 Workflow code (auto ecli)
 
@@ -33,21 +34,21 @@ Workflow code (manual)
 
 Monorepo workflow code (manual)
 
-- [?] Pull in new code location, remove old in .github/workflows/api_doc_build.yml (couldn't find relevant lines in monorepo)
+- [x] Pull in new code location, remove old in .github/workflows/api_doc_build.yml
 
 In github (manual)
 
-- [ ] Add integration testing secrets in Github (ask Chester for help)
-- [ ] Add partner collaborators in Github (ask Chester for help)
-- [x] "Allow auto-merge" in General Settings 
-- [x] Only "Allow squash merging" in General Settings
-- [ ] Set up ruleset matching CI build (ask Chester for help)
+- [ ] Add any required integration testing secrets in Github
+- [x] Add any required partner collaborators in Github
+- [x] "Allow auto-merge" in General Settings (recommended)
+- [x] Only "Allow squash merging" in General Settings (recommended)
+- [x] Set up ruleset matching CI build (recommended)
     - name: ci build
     - enforcement: active
     - bypass: write
     - target: default branch
     - rules: restrict deletions, require status checks ("CI Success"), block force pushes
-- [x] Set up ruleset
+- [x] Set up ruleset (recommended)
     - name: require prs
     - enforcement: active
     - bypass: none
@@ -56,12 +57,7 @@ In github (manual)
 
 Pypi (manual)
 
-- [ ] Add new repo to test-pypi and pypi trusted publishing (ask Chester for help)
+- [ ] Add new repo to test-pypi and pypi trusted publishing
 
-Slack
-
-- [ ] Set up release alerting in Slack (ask Chester for help)
-
-release:
-/github subscribe langchain-ai/langchain-{partner_lower} releases workflows:{name:"release"}
-/github unsubscribe langchain-ai/langchain-{partner_lower} issues pulls commits deployments
+> [!NOTE]
+> Tag [@ccurme](https://github.com/ccurme) if you have questions on any step.
