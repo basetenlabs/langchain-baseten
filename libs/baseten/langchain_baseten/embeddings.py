@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import secret_from_env
@@ -27,8 +27,8 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                export BASETEN_API_KEY="your-api-key"
 
        Key init args — completion params:
-           model: str
-               Name of Baseten model to use.
+           model: Optional[str]
+                Name of Baseten model to use. Optional since model_url identifies it.
            model_url: str
                The specific model URL for your deployed embedding model.
                 Compatible with /sync, /sync/v1, or /predict endpoints with
@@ -50,21 +50,21 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                # All of these URL formats work with automatic error correction:
 
                # Option 1: /sync endpoint (recommended)
-    again            embeddings = BasetenEmbeddings(
-                   model="your-embedding-model",
+               embeddings = BasetenEmbeddings(
                    model_url="https://model-<id>.api.baseten.co/environments/production/sync",
+                   # model parameter is optional
                )
 
                # Option 2: /sync/v1 endpoint (automatically normalized)
                embeddings = BasetenEmbeddings(
-                   model="your-embedding-model",
                    model_url="https://model-<id>.api.baseten.co/environments/production/sync/v1",
+                   # model parameter is optional
                )
 
                # Option 3: /predict endpoint (automatically converted to /sync)
                embeddings = BasetenEmbeddings(
-                   model="your-embedding-model",
                    model_url="https://model-<id>.api.baseten.co/environments/production/predict",
+                   # model parameter is optional
                )
 
        Embed multiple texts:
@@ -182,8 +182,8 @@ class BasetenEmbeddings(BaseModel, Embeddings):
     """Baseten API key. Automatically read from env variable
     ``BASETEN_API_KEY`` if not provided."""
 
-    model: str = Field(default="embeddings")
-    """Model name to use for embeddings."""
+    model: Optional[str] = Field(default=None)
+    """Model name to use for embeddings. Optional since model_url identifies it."""
 
     model_url: str = Field(...)
     """The specific model URL for your deployed embedding model.
@@ -263,13 +263,18 @@ class BasetenEmbeddings(BaseModel, Embeddings):
 
         try:
             # Use Performance Client's embed method with optimized batching
-            response = self.client.embed(
-                input=texts,
-                model=self.model,
-                batch_size=32,  # Optimize batch size for performance
-                max_concurrent_requests=128,
-                max_chars_per_request=8000,
-            )
+            embed_params = {
+                "input": texts,
+                "batch_size": 32,  # Optimize batch size for performance
+                "max_concurrent_requests": 128,
+                "max_chars_per_request": 8000,
+            }
+
+            # Only include model if specified
+            if self.model is not None:
+                embed_params["model"] = self.model
+
+            response = self.client.embed(**embed_params)
 
             # Performance Client returns response.data with embeddings
             return [item.embedding for item in response.data]
@@ -303,13 +308,18 @@ class BasetenEmbeddings(BaseModel, Embeddings):
 
         try:
             # Use Performance Client's async embed method
-            response = await self.client.async_embed(
-                input=texts,
-                model=self.model,
-                batch_size=32,
-                max_concurrent_requests=128,
-                max_chars_per_request=8000,
-            )
+            embed_params = {
+                "input": texts,
+                "batch_size": 32,
+                "max_concurrent_requests": 128,
+                "max_chars_per_request": 8000,
+            }
+
+            # Only include model if specified
+            if self.model is not None:
+                embed_params["model"] = self.model
+
+            response = await self.client.async_embed(**embed_params)
 
             # Performance Client returns response.data with embeddings
             return [item.embedding for item in response.data]

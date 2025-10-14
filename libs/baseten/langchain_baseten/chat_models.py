@@ -215,8 +215,8 @@ class ChatBaseten(BaseChatModel):
             export BASETEN_API_KEY="your-api-key"
 
     Key init args — completion params:
-        model: str
-            Name of Baseten model to use.
+        model: Optional[str]
+            Name of Baseten model to use. Optional for dedicated models.
         temperature: float
             Sampling temperature.
         max_tokens: Optional[int]
@@ -251,11 +251,10 @@ class ChatBaseten(BaseChatModel):
 
             # Option 2: Use dedicated model URL for deployed models
             chat = ChatBaseten(
-                model="your-model-name",
                 model_url="https://model-<id>.api.baseten.co/environments/production/predict",
                 temperature=0.7,
                 max_tokens=256,
-                # model_url overrides baseten_api_base
+                # model parameter is optional for dedicated models
             )
 
     Invoke:
@@ -430,8 +429,8 @@ class ChatBaseten(BaseChatModel):
 
     client: Any = Field(default=None, exclude=True)  #: :meta private:
     async_client: Any = Field(default=None, exclude=True)  #: :meta private:
-    model: str
-    """Model name to use."""
+    model: Optional[str] = None
+    """Model name to use. Optional for dedicated models."""
     temperature: float = 0.7
     """What sampling temperature to use."""
     max_tokens: Optional[int] = None
@@ -537,7 +536,6 @@ class ChatBaseten(BaseChatModel):
     def _default_params(self) -> dict[str, Any]:
         """Get the default parameters for calling Baseten API."""
         params = {
-            "model": self.model,
             "temperature": self.temperature,
             "top_p": self.top_p,
             "frequency_penalty": self.frequency_penalty,
@@ -546,6 +544,10 @@ class ChatBaseten(BaseChatModel):
             "stream": self.streaming,
             **self.model_kwargs,
         }
+
+        # Only include model if specified
+        if self.model is not None:
+            params["model"] = self.model  # type: ignore[assignment]
         if self.max_tokens is not None:
             params["max_tokens"] = self.max_tokens
         return params
@@ -699,8 +701,7 @@ class ChatBaseten(BaseChatModel):
     @property
     def _identifying_params(self) -> dict[str, Any]:
         """Get the identifying parameters."""
-        return {
-            "model": self.model,
+        params = {
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "top_p": self.top_p,
@@ -709,6 +710,12 @@ class ChatBaseten(BaseChatModel):
             "n": self.n,
         }
 
+        # Only include model if specified
+        if self.model is not None:
+            params["model"] = self.model  # type: ignore[assignment]
+
+        return params
+
     def _get_ls_params(
         self, stop: Optional[list[str]] = None, **kwargs: Any
     ) -> LangSmithParams:
@@ -716,7 +723,7 @@ class ChatBaseten(BaseChatModel):
         params = self._get_invocation_params(stop=stop, **kwargs)
         ls_params = LangSmithParams(
             ls_provider="baseten",
-            ls_model_name=self.model,
+            ls_model_name=self.model or "baseten-model",
             ls_model_type="chat",
             ls_temperature=params.get("temperature", self.temperature),
         )

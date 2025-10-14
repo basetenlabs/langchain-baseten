@@ -24,14 +24,14 @@ from langchain_baseten import ChatBaseten
 # Option 1: Use Model APIs with model slug (recommended)
 chat = ChatBaseten(
     model="deepseek-ai/DeepSeek-V3-0324",  # Choose from available model slugs
-    baseten_api_key="your-api-key",  # Or set BASETEN_API_KEY env var
+    api_key="your-api-key",  # Or set BASETEN_API_KEY env var
 )
 
 # Option 2: Use dedicated model URL for deployed models
 chat = ChatBaseten(
-    model="your-model-name",
-    model_url="https://model-<id>.api.baseten.co/environments/production/predict",
-    baseten_api_key="your-api-key",
+s    model_url="https://model-<id>.api.baseten.co/environments/production/predict",
+    api_key="your-api-key",
+    # model parameter is optional for dedicated models, may required for specific models like "openai/gpt-oss-20b", please check APIs docs for specific deployments 
 )
 
 # Use the chat model
@@ -48,9 +48,9 @@ from langchain_baseten import BasetenEmbeddings
 
 # Initialize the embeddings model
 embeddings = BasetenEmbeddings(
-    model="my_embedding_model",  # Replace with your model name
     model_url="https://model-<id>.api.baseten.co/environments/production/sync",  # Your model URL
-    baseten_api_key="your-api-key",  # Or set BASETEN_API_KEY env var
+    api_key="your-api-key",  # Or set BASETEN_API_KEY env var
+    # model parameter is optional since model_url identifies the model
 )
 
 # Embed documents

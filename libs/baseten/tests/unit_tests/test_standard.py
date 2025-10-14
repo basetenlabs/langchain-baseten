@@ -17,7 +17,7 @@ class TestBasetenStandard(ChatModelUnitTests):
     def chat_model_params(self) -> dict:
         return {
             "model": "deepseek-ai/DeepSeek-V3-0324",
-            "baseten_api_key": "test_api_key",
+            "api_key": "test_api_key",
         }
 
     @property
@@ -30,6 +30,6 @@ class TestBasetenStandard(ChatModelUnitTests):
                 "model": "deepseek-ai/DeepSeek-V3-0324",
             },
             {
-                "baseten_api_key": "api_key",
+                "api_key": "api_key",
             },
         )
