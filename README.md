@@ -48,7 +48,7 @@ In github (manual)
     - bypass: write
     - target: default branch
     - rules: restrict deletions, require status checks ("CI Success"), block force pushes
-- [x] Set up ruleset (recommended)
+- [ ] Set up ruleset (recommended) (not turned on yet)
     - name: require prs
     - enforcement: active
     - bypass: none
@@ -57,7 +57,7 @@ In github (manual)
 
 Pypi (manual)
 
-- [ ] Add new repo to test-pypi and pypi trusted publishing
+- [x] Add new repo to test-pypi and pypi trusted publishing
 
 > [!NOTE]
 > Tag [@ccurme](https://github.com/ccurme) if you have questions on any step.
