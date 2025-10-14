@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage
 from langchain_baseten import ChatBaseten
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 def test_chat_baseten_invoke() -> None:
     """Test ChatBaseten invoke."""
@@ -29,6 +30,7 @@ def test_chat_baseten_invoke() -> None:
     assert len(response.content) > 0
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 def test_chat_baseten_stream() -> None:
     """Test ChatBaseten streaming."""
@@ -52,6 +54,7 @@ def test_chat_baseten_stream() -> None:
     assert len(content) > 0
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 async def test_chat_baseten_ainvoke() -> None:
     """Test ChatBaseten async invoke."""
@@ -73,6 +76,7 @@ async def test_chat_baseten_ainvoke() -> None:
     assert len(response.content) > 0
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 async def test_chat_baseten_astream() -> None:
     """Test ChatBaseten async streaming."""
@@ -96,6 +100,7 @@ async def test_chat_baseten_astream() -> None:
     assert len(content) > 0
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_dedicated_model_url")
 def test_chat_baseten_dedicated_url_invoke() -> None:
@@ -123,6 +128,7 @@ def test_chat_baseten_dedicated_url_invoke() -> None:
     assert len(response.content) > 0
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_dedicated_model_url")
 def test_chat_baseten_dedicated_url_stream() -> None:

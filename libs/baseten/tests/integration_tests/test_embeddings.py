@@ -7,6 +7,7 @@ import pytest
 from langchain_baseten import BasetenEmbeddings
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_embedding_model_url")
 def test_baseten_embeddings_embed_documents() -> None:
@@ -34,6 +35,7 @@ def test_baseten_embeddings_embed_documents() -> None:
     assert isinstance(result[0][0], float)
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_embedding_model_url")
 def test_baseten_embeddings_embed_query() -> None:
@@ -58,6 +60,7 @@ def test_baseten_embeddings_embed_query() -> None:
     assert isinstance(result[0], float)
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_embedding_model_url")
 async def test_baseten_embeddings_aembed_documents() -> None:
@@ -85,6 +88,7 @@ async def test_baseten_embeddings_aembed_documents() -> None:
     assert isinstance(result[0][0], float)
 
 
+@pytest.mark.compile
 @pytest.mark.requires("baseten_api_key")
 @pytest.mark.requires("baseten_embedding_model_url")
 async def test_baseten_embeddings_aembed_query() -> None:
