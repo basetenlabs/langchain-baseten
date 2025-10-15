@@ -479,10 +479,10 @@ class ChatBaseten(BaseChatModel):
     """Override debug field to avoid langchain.debug dependency."""
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize ChatBaseten without relying on BaseChatModel's verbose/debug handling."""
+        """Initialize ChatBaseten without relying on BaseChatModel's verbose/debug."""
         # Remove verbose and debug from kwargs to avoid the AttributeError
-        kwargs.pop('verbose', None)
-        kwargs.pop('debug', None)
+        kwargs.pop("verbose", None)
+        kwargs.pop("debug", None)
         super().__init__(**kwargs)
 
     @model_validator(mode="before")
@@ -564,7 +564,8 @@ class ChatBaseten(BaseChatModel):
             # Extract model name from URL for dedicated deployments
             # Format: https://model-<id>.api.baseten.co/environments/production/sync/v1
             import re
-            match = re.search(r'model-([a-zA-Z0-9]+)', self.model_url)
+
+            match = re.search(r"model-([a-zA-Z0-9]+)", self.model_url)
             if match:
                 params["model"] = f"model-{match.group(1)}"
             else:
@@ -573,7 +574,6 @@ class ChatBaseten(BaseChatModel):
         else:
             # Default model for Model APIs
             params["model"] = "deepseek-ai/DeepSeek-V3-0324"
-            
         if self.max_tokens is not None:
             params["max_tokens"] = self.max_tokens
         return params
@@ -727,7 +727,7 @@ class ChatBaseten(BaseChatModel):
     @property
     def _identifying_params(self) -> dict[str, Any]:
         """Get the identifying parameters."""
-        params = {
+        params: dict[str, Any] = {
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "top_p": self.top_p,
@@ -742,7 +742,8 @@ class ChatBaseten(BaseChatModel):
         elif self.model_url is not None:
             # Extract model name from URL for dedicated deployments
             import re
-            match = re.search(r'model-([a-zA-Z0-9]+)', self.model_url)
+
+            match = re.search(r"model-([a-zA-Z0-9]+)", self.model_url)
             if match:
                 params["model"] = f"model-{match.group(1)}"
             else:

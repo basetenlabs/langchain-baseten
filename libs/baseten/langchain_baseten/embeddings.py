@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import secret_from_env
@@ -177,7 +177,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
     """Baseten API key. Automatically read from env variable
     ``BASETEN_API_KEY`` if not provided."""
 
-
     model_url: str = Field(...)
     """The specific model URL for your deployed embedding model.
 
@@ -263,7 +262,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                 "max_chars_per_request": 8000,
             }
 
-
             response = self.client.embed(**embed_params)
 
             # Performance Client returns response.data with embeddings
@@ -304,7 +302,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                 "max_concurrent_requests": 128,
                 "max_chars_per_request": 8000,
             }
-
 
             response = await self.client.async_embed(**embed_params)
 
