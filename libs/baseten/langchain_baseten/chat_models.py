@@ -475,11 +475,14 @@ class ChatBaseten(BaseChatModel):
     """Whether to stream the results or not."""
     verbose: bool = Field(default=False, exclude=True, repr=False)
     """Override verbose field to avoid langchain.verbose dependency."""
+    debug: bool = Field(default=False, exclude=True, repr=False)
+    """Override debug field to avoid langchain.debug dependency."""
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize ChatBaseten without relying on BaseChatModel's verbose handling."""
-        # Remove verbose from kwargs to avoid the AttributeError
+        """Initialize ChatBaseten without relying on BaseChatModel's verbose/debug handling."""
+        # Remove verbose and debug from kwargs to avoid the AttributeError
         kwargs.pop('verbose', None)
+        kwargs.pop('debug', None)
         super().__init__(**kwargs)
 
     @model_validator(mode="before")
