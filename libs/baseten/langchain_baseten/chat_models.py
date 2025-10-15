@@ -473,6 +473,8 @@ class ChatBaseten(BaseChatModel):
     """Maximum number of retries to make when generating."""
     streaming: bool = False
     """Whether to stream the results or not."""
+    verbose: bool = Field(default=False, exclude=True, repr=False)
+    """Override verbose field to avoid langchain.verbose dependency."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize ChatBaseten without relying on BaseChatModel's verbose handling."""
