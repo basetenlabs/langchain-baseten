@@ -27,8 +27,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                export BASETEN_API_KEY="your-api-key"
 
        Key init args — completion params:
-           model: Optional[str]
-                Name of Baseten model to use. Optional since model_url identifies it.
            model_url: str
                The specific model URL for your deployed embedding model.
                 Compatible with /sync, /sync/v1, or /predict endpoints with
@@ -51,20 +49,17 @@ class BasetenEmbeddings(BaseModel, Embeddings):
 
                # Option 1: /sync endpoint (recommended)
                embeddings = BasetenEmbeddings(
-                   model_url="https://model-<id>.api.baseten.co/environments/production/sync",
-                   # model parameter is optional
+                   model_url="https://model-<id>.api.baseten.co/environments/production/sync"
                )
 
                # Option 2: /sync/v1 endpoint (automatically normalized)
                embeddings = BasetenEmbeddings(
-                   model_url="https://model-<id>.api.baseten.co/environments/production/sync/v1",
-                   # model parameter is optional
+                   model_url="https://model-<id>.api.baseten.co/environments/production/sync/v1"
                )
 
                # Option 3: /predict endpoint (automatically converted to /sync)
                embeddings = BasetenEmbeddings(
-                   model_url="https://model-<id>.api.baseten.co/environments/production/predict",
-                   # model parameter is optional
+                   model_url="https://model-<id>.api.baseten.co/environments/production/predict"
                )
 
        Embed multiple texts:
@@ -182,8 +177,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
     """Baseten API key. Automatically read from env variable
     ``BASETEN_API_KEY`` if not provided."""
 
-    model: Optional[str] = Field(default=None)
-    """Model name to use for embeddings. Optional since model_url identifies it."""
 
     model_url: str = Field(...)
     """The specific model URL for your deployed embedding model.
@@ -270,9 +263,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                 "max_chars_per_request": 8000,
             }
 
-            # Only include model if specified
-            if self.model is not None:
-                embed_params["model"] = self.model
 
             response = self.client.embed(**embed_params)
 
@@ -315,9 +305,6 @@ class BasetenEmbeddings(BaseModel, Embeddings):
                 "max_chars_per_request": 8000,
             }
 
-            # Only include model if specified
-            if self.model is not None:
-                embed_params["model"] = self.model
 
             response = await self.client.async_embed(**embed_params)
 

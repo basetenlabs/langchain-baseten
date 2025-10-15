@@ -10,11 +10,9 @@ from langchain_baseten import BasetenEmbeddings
 def test_baseten_embeddings_init() -> None:
     """Test BasetenEmbeddings initialization."""
     embeddings = BasetenEmbeddings(
-        model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
         api_key="test_key",
     )
-    assert embeddings.model == "test-model"
     assert (
         embeddings.model_url
         == "https://model-123.api.baseten.co/production/predict/sync/v1"
@@ -31,7 +29,6 @@ def test_baseten_embeddings_init_missing_api_key() -> None:
     try:
         with pytest.raises(ValueError, match="You must specify an api key"):
             BasetenEmbeddings(
-                model="test-model",
                 model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
             )
     finally:
@@ -44,7 +41,6 @@ def test_baseten_embeddings_init_missing_model_url() -> None:
     """Test BasetenEmbeddings initialization with missing model URL."""
     with pytest.raises(ValueError, match="Field required"):
         BasetenEmbeddings(  # type: ignore[call-arg]
-            model="test-model",
             api_key="test_key",
         )
 
@@ -53,7 +49,6 @@ def test_baseten_embeddings_url_normalization() -> None:
     """Test that model URLs are normalized correctly for Performance Client."""
     # Test /sync/v1 URL gets normalized to /sync for Performance Client
     embeddings1 = BasetenEmbeddings(
-        model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
         api_key="test_key",
     )
@@ -62,7 +57,6 @@ def test_baseten_embeddings_url_normalization() -> None:
 
     # Test /sync URL stays the same
     embeddings2 = BasetenEmbeddings(
-        model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync",
         api_key="test_key",
     )
@@ -72,7 +66,6 @@ def test_baseten_embeddings_url_normalization() -> None:
 def test_baseten_embeddings_empty_documents() -> None:
     """Test embedding empty list of documents."""
     embeddings = BasetenEmbeddings(
-        model="test-model",
         model_url="https://model-123.api.baseten.co/production/predict/sync/v1",
         api_key="test_key",
     )

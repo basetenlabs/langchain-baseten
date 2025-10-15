@@ -21,7 +21,6 @@ def test_baseten_embeddings_embed_documents() -> None:
         pytest.skip("BASETEN_EMBEDDING_MODEL_URL not set")
 
     embeddings = BasetenEmbeddings(
-        model="embeddings",
         model_url=model_url,
         api_key=api_key,
     )
@@ -49,7 +48,6 @@ def test_baseten_embeddings_embed_query() -> None:
         pytest.skip("BASETEN_EMBEDDING_MODEL_URL not set")
 
     embeddings = BasetenEmbeddings(
-        model="embeddings",
         model_url=model_url,
         api_key=api_key,
     )
@@ -74,7 +72,6 @@ async def test_baseten_embeddings_aembed_documents() -> None:
         pytest.skip("BASETEN_EMBEDDING_MODEL_URL not set")
 
     embeddings = BasetenEmbeddings(
-        model="embeddings",
         model_url=model_url,
         api_key=api_key,
     )
@@ -102,7 +99,6 @@ async def test_baseten_embeddings_aembed_query() -> None:
         pytest.skip("BASETEN_EMBEDDING_MODEL_URL not set")
 
     embeddings = BasetenEmbeddings(
-        model="embeddings",
         model_url=model_url,
         api_key=api_key,
     )

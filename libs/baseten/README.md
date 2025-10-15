@@ -8,11 +8,7 @@ This package contains the LangChain integration with Baseten.
 pip install langchain-baseten
 ```
 
-The embeddings functionality uses Baseten's Performance Client for optimized performance:
-
-```bash
-pip install baseten-performance-client
-```
+The embeddings functionality uses Baseten's Performance Client for optimized performance, which is automatically included as a dependency.
 
 ## Chat Models
 
@@ -51,7 +47,6 @@ from langchain_baseten import BasetenEmbeddings
 embeddings = BasetenEmbeddings(
     model_url="https://model-<id>.api.baseten.co/environments/production/sync",  # Your model URL
     api_key="your-api-key",  # Or set BASETEN_API_KEY env var
-    # model parameter is optional since model_url identifies the model
 )
 
 # Embed documents
