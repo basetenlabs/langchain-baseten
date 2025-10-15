@@ -474,6 +474,12 @@ class ChatBaseten(BaseChatModel):
     streaming: bool = False
     """Whether to stream the results or not."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize ChatBaseten without relying on BaseChatModel's verbose handling."""
+        # Remove verbose from kwargs to avoid the AttributeError
+        kwargs.pop('verbose', None)
+        super().__init__(**kwargs)
+
     @model_validator(mode="before")
     @classmethod
     def build_extra(cls, values: dict[str, Any]) -> dict[str, Any]:
