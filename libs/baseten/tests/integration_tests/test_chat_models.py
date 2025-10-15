@@ -156,3 +156,35 @@ def test_chat_baseten_dedicated_url_stream() -> None:
     assert len(chunks) > 0
     content = "".join(str(chunk.content) for chunk in chunks)
     assert len(content) > 0
+
+
+@pytest.mark.compile
+@pytest.mark.requires("baseten_api_key")
+@pytest.mark.requires("baseten_dedicated_model_url")
+def test_chat_baseten_dedicated_url_only() -> None:
+    """Test ChatBaseten with only dedicated model URL (no model parameter)."""
+    api_key = os.environ.get("BASETEN_API_KEY")
+    model_url = os.environ.get("BASETEN_DEDICATED_MODEL_URL")
+
+    if not api_key:
+        pytest.skip("BASETEN_API_KEY not set")
+    if not model_url:
+        pytest.skip("BASETEN_DEDICATED_MODEL_URL not set")
+
+    chat = ChatBaseten(
+        model_url=model_url,
+        api_key=api_key,
+        temperature=0,
+        max_tokens=50,
+    )
+
+    # Should extract model name from URL
+    params = chat._default_params
+    assert "model" in params
+    assert chat.model is None  # No explicit model provided
+
+    message = HumanMessage(content="Hello from dedicated model!")
+    response = chat.invoke([message])
+
+    assert isinstance(response.content, str)
+    assert len(response.content) > 0

@@ -12,9 +12,9 @@ dependencies = [
     "baseten-performance-client>=0.0.11",
 ]
 name = "langchain-baseten"
-version = "0.1.5"
+version = "0.1.7"
 description = "An integration package connecting Baseten and LangChain"
-readme = "README.md"
+readme = {file = "README.md", content-type = "text/markdown"}
 
 [project.urls]
 # NOTE: If we are making langchain-ai the parent org, update the "Source Code" URL below to point to the correct repository.

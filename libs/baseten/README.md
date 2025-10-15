@@ -17,7 +17,7 @@ The embeddings functionality uses Baseten's Performance Client for optimized per
 ```python
 from langchain_baseten import ChatBaseten
 
-# Option 1: Use Model APIs with model slug (recommended)
+# Option 1: Use Model APIs with model slug
 chat = ChatBaseten(
     model="deepseek-ai/DeepSeek-V3-0324",  # Choose from available model slugs
     api_key="your-api-key",  # Or set BASETEN_API_KEY env var
@@ -67,7 +67,7 @@ You can configure the Baseten integration using environment variables:
 ## Deployment Options
 
 **Chat Models:**
-- **Model APIs** (recommended): Use model slugs with shared infrastructure
+- **Model APIs**: Use model slugs with shared infrastructure
 - **Dedicated URLs**: Use specific model deployments with dedicated resources
 
 **Embeddings:**

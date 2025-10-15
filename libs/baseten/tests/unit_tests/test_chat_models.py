@@ -103,6 +103,27 @@ def test_chat_baseten_dedicated_model_url() -> None:
     assert str(chat.client._base_url).rstrip("/") == expected_base_url
 
 
+def test_chat_baseten_dedicated_model_url_only() -> None:
+    """Test ChatBaseten with only dedicated model URL (no model parameter)."""
+    chat = ChatBaseten(
+        model_url="https://model-456.api.baseten.co/environments/production/sync/v1",
+        api_key="test_key",
+    )
+
+    # Should use the dedicated URL
+    expected_base_url = (
+        "https://model-456.api.baseten.co/environments/production/sync/v1"
+    )
+    assert str(chat.client._base_url).rstrip("/") == expected_base_url
+    
+    # Should extract model name from URL for API calls
+    params = chat._default_params
+    assert params["model"] == "model-456"
+    
+    # chat.model should be None since not explicitly provided
+    assert chat.model is None
+
+
 def test_chat_baseten_model_apis_default() -> None:
     """Test ChatBaseten uses Model APIs by default."""
     chat = ChatBaseten(

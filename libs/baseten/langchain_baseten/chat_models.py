@@ -556,9 +556,24 @@ class ChatBaseten(BaseChatModel):
             **self.model_kwargs,
         }
 
-        # Only include model if specified
+        # Include model parameter - required by Baseten API
+        # Use provided model or extract from model_url if available
         if self.model is not None:
-            params["model"] = self.model  # type: ignore[assignment]
+            params["model"] = self.model
+        elif self.model_url is not None:
+            # Extract model name from URL for dedicated deployments
+            # Format: https://model-<id>.api.baseten.co/environments/production/sync/v1
+            import re
+            match = re.search(r'model-([a-zA-Z0-9]+)', self.model_url)
+            if match:
+                params["model"] = f"model-{match.group(1)}"
+            else:
+                # Fallback to a generic model name
+                params["model"] = "baseten-model"
+        else:
+            # Default model for Model APIs
+            params["model"] = "deepseek-ai/DeepSeek-V3-0324"
+            
         if self.max_tokens is not None:
             params["max_tokens"] = self.max_tokens
         return params
@@ -721,9 +736,19 @@ class ChatBaseten(BaseChatModel):
             "n": self.n,
         }
 
-        # Only include model if specified
+        # Include model parameter - required by Baseten API
         if self.model is not None:
-            params["model"] = self.model  # type: ignore[assignment]
+            params["model"] = self.model
+        elif self.model_url is not None:
+            # Extract model name from URL for dedicated deployments
+            import re
+            match = re.search(r'model-([a-zA-Z0-9]+)', self.model_url)
+            if match:
+                params["model"] = f"model-{match.group(1)}"
+            else:
+                params["model"] = "baseten-model"
+        else:
+            params["model"] = "deepseek-ai/DeepSeek-V3-0324"
 
         return params
 
