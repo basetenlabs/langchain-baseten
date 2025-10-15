@@ -18,22 +18,19 @@ The embeddings functionality uses Baseten's Performance Client for optimized per
 from langchain_baseten import ChatBaseten
 
 # Option 1: Use Model APIs with model slug
-chat = ChatBaseten(
-    model="deepseek-ai/DeepSeek-V3-0324",  # Choose from available model slugs
+model = ChatBaseten(
+    model="moonshotai/Kimi-K2-Instruct-0905",  # Choose from available model slugs: https://docs.baseten.co/development/model-apis/overview#supported-models
     api_key="your-api-key",  # Or set BASETEN_API_KEY env var
 )
 
-# Option 2: Use dedicated model URL for deployed models
-chat = ChatBaseten(
+# Option 2: Use dedicated deployments with model url
+model = ChatBaseten(
     model_url="https://model-<id>.api.baseten.co/environments/production/predict",
-    api_key="your-api-key",
-
- 
+    api_key="your-api-key",  # Or set BASETEN_API_KEY env var
 )
 
 # Use the chat model
 response = chat.invoke("Hello, how are you?")
-print(response.content)
 ```
 
 ## Embeddings
@@ -49,13 +46,13 @@ embeddings = BasetenEmbeddings(
     api_key="your-api-key",  # Or set BASETEN_API_KEY env var
 )
 
-# Embed documents
-vectors = embeddings.embed_documents(["Hello world", "How are you?"])
-print(f"Generated {len(vectors)} embeddings of dimension {len(vectors[0])}")
-
 # Embed a single query
 query_vector = embeddings.embed_query("What is the meaning of life?")
 print(f"Query embedding dimension: {len(query_vector)}")
+
+# Embed documents
+vectors = embeddings.embed_documents(["Hello world", "How are you?"])
+print(f"Generated {len(vectors)} embeddings of dimension {len(vectors[0])}")
 ```
 
 ## Configuration
