@@ -8,11 +8,11 @@ license = { text = "MIT" }
 requires-python = ">=3.9.0,<4.0.0"
 dependencies = [
     "langchain-core>=0.3.55,<1.0.0",
-    "openai>=1.0.0,<2.0.0",
+    "openai>=1.0.0,<3.0.0",
     "baseten-performance-client>=0.0.11",
 ]
 name = "langchain-baseten"
-version = "0.1.8"
+version = "0.1.9"
 description = "An integration package connecting Baseten and LangChain"
 readme = {file = "README.md", content-type = "text/markdown"}
 
