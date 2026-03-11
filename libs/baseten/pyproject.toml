@@ -1,26 +1,38 @@
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-authors = []
+name = "langchain-baseten"
+description = "Integration package connecting Baseten and LangChain"
 license = { text = "MIT" }
-requires-python = ">=3.9.0,<4.0.0"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+version = "0.2.0"
+requires-python = ">=3.10.0,<4.0.0"
 dependencies = [
-    "langchain-core>=0.3.55,<2.0.0",
-    "openai>=2.4.0,<3.0.0",
+    "langchain-core>=1.2.18,<2.0.0",
+    "langchain-openai>=1.1.11,<2.0.0",
     "baseten-performance-client>=0.0.11",
 ]
-name = "langchain-baseten"
-version = "0.1.9"
-description = "An integration package connecting Baseten and LangChain"
-readme = {file = "README.md", content-type = "text/markdown"}
 
 [project.urls]
-# NOTE: If we are making langchain-ai the parent org, update the "Source Code" URL below to point to the correct repository.
-"Source Code" = "https://github.com/basetenlabs/langchain-baseten/tree/master/libs/baseten"
-"Release Notes" = "https://github.com/langchain-ai/langchain/releases?q=tag%3A%22langchain-baseten%3D%3D0%22&expanded=true"
-repository = "https://github.com/langchain-ai/langchain"
+Homepage = "https://docs.baseten.co/"
+Documentation = "https://github.com/basetenlabs/langchain-baseten/tree/main/libs/baseten"
+Repository = "https://github.com/basetenlabs/langchain-baseten"
+Issues = "https://github.com/basetenlabs/langchain-baseten/issues"
+Changelog = "https://github.com/basetenlabs/langchain-baseten/releases"
 
 [dependency-groups]
 test = [
@@ -40,14 +52,12 @@ dev = ["langchain-core"]
 typing = ["mypy>=1.10.0,<2.0.0", "langchain-core"]
 
 [tool.uv.sources]
-langchain-core = { path = "../../core", editable = true }
-langchain-tests = { path = "../../standard-tests", editable = true }
+langchain-core = { path = "/Users/mdrxy/lc/libs/core", editable = true }
+langchain-openai = { path = "/Users/mdrxy/lc/libs/partners/openai", editable = true }
+langchain-tests = { path = "/Users/mdrxy/lc/libs/standard-tests", editable = true }
 
 [tool.mypy]
 disallow_untyped_defs = "True"
-
-[tool.ruff]
-target-version = "py39"
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -110,6 +120,9 @@ unfixable = ["B028"] # People should intentionally tune the stacklevel
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 ignore-var-parameters = true  # ignore missing documentation for *args and **kwargs parameters
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.coverage.run]
 omit = ["tests/*"]
