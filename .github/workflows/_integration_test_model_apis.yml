@@ -1,0 +1,45 @@
+name: integration-test-model-apis
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: "From which folder this pipeline executes"
+    secrets:
+      BASETEN_API_KEY:
+        required: true
+
+env:
+  UV_FROZEN: "true"
+  BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.12"
+    name: "Model APIs integration tests #${{ matrix.python-version }}"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }} + uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        shell: bash
+        run: uv sync --group test --group test_integration
+
+      - name: Run Model APIs integration tests
+        shell: bash
+        run: |
+          uv run pytest tests/integration_tests/test_standard.py tests/integration_tests/test_reasoning.py -v --timeout=120
