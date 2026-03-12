@@ -42,4 +42,4 @@ jobs:
       - name: Run Model APIs integration tests
         shell: bash
         run: |
-          uv run pytest tests/integration_tests/test_standard.py tests/integration_tests/test_reasoning.py -v --timeout=120
+          uv run pytest tests/integration_tests/test_standard.py tests/integration_tests/test_reasoning.py -v
