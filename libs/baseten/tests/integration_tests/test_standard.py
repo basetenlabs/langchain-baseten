@@ -21,7 +21,7 @@ from langchain_tests.integration_tests import ChatModelIntegrationTests
 from langchain_baseten import ChatBaseten
 from tests.integration_tests._reasoning import get_reasoning_model
 
-MODEL_NAME = "MiniMaxAI/MiniMax-M2.5"
+MODEL_NAME = "zai-org/GLM-5"
 VISION_MODEL_NAME = "moonshotai/Kimi-K2.5"
 
 pytestmark = [

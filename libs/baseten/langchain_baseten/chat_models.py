@@ -160,7 +160,7 @@ class ChatBaseten(BaseChatOpenAI):
 
     # Option 1: Use Model APIs with model slug (recommended)
     chat = ChatBaseten(
-        model="MiniMaxAI/MiniMax-M2.5",
+        model="zai-org/GLM-5",
         temperature=0.7,
         max_tokens=256,
         # Uses default baseten_api_base for Model APIs
@@ -197,7 +197,7 @@ class ChatBaseten(BaseChatOpenAI):
                 "prompt_tokens": 31,
                 "total_tokens": 36,
             },
-            "model_name": "MiniMaxAI/MiniMax-M2.5",
+            "model_name": "zai-org/GLM-5",
             "finish_reason": "stop",
         },
     )
@@ -338,7 +338,7 @@ class ChatBaseten(BaseChatOpenAI):
             "prompt_tokens": 28,
             "total_tokens": 33,
         },
-        "model_name": "MiniMaxAI/MiniMax-M2.5",
+        "model_name": "zai-org/GLM-5",
         "finish_reason": "stop",
     }
     ```
@@ -474,7 +474,7 @@ class ChatBaseten(BaseChatOpenAI):
         else:
             base_url = self.baseten_api_base
             if not self.model_name:
-                self.model_name = "MiniMaxAI/MiniMax-M2.5"
+                self.model_name = "zai-org/GLM-5"
 
         api_key = (
             self.baseten_api_key.get_secret_value()

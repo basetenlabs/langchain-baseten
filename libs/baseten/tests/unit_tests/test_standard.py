@@ -16,7 +16,7 @@ class TestBasetenStandard(ChatModelUnitTests):
     @property
     def chat_model_params(self) -> dict:
         return {
-            "model": "MiniMaxAI/MiniMax-M2.5",
+            "model": "zai-org/GLM-5",
         }
 
     @property
@@ -26,7 +26,7 @@ class TestBasetenStandard(ChatModelUnitTests):
                 "BASETEN_API_KEY": "api_key",
             },
             {
-                "model": "MiniMaxAI/MiniMax-M2.5",
+                "model": "zai-org/GLM-5",
             },
             {
                 "baseten_api_key": "api_key",
