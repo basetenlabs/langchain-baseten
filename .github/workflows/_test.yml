@@ -7,10 +7,14 @@ on:
         required: true
         type: string
         description: "From which folder this pipeline executes"
+    secrets:
+      BASETEN_API_KEY:
+        required: false
 
 env:
   UV_FROZEN: "true"
   UV_NO_SYNC: "true"
+  BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
 
 jobs:
   build:
