@@ -50,12 +50,12 @@ class MockOpenAIResponse(BaseModel):
 def test_chat_baseten_init() -> None:
     """Test ChatBaseten initialization."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
         temperature=0.7,
         max_tokens=100,
     )
-    assert chat.model_name == "deepseek-ai/DeepSeek-V3-0324"
+    assert chat.model_name == "MiniMaxAI/MiniMax-M2.5"
     assert chat.temperature == 0.7
     assert chat.max_tokens == 100
 
@@ -68,7 +68,7 @@ def test_chat_baseten_init_missing_api_key() -> None:
 
     try:
         with pytest.raises(ValueError, match="BASETEN_API_KEY must be set"):
-            ChatBaseten(model="deepseek-ai/DeepSeek-V3-0324")
+            ChatBaseten(model="MiniMaxAI/MiniMax-M2.5")
     finally:
         if original_key is not None:
             os.environ["BASETEN_API_KEY"] = original_key
@@ -77,7 +77,7 @@ def test_chat_baseten_init_missing_api_key() -> None:
 def test_chat_baseten_llm_type() -> None:
     """Test ChatBaseten LLM type."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     assert chat._llm_type == "baseten-chat"
@@ -86,7 +86,7 @@ def test_chat_baseten_llm_type() -> None:
 def test_chat_baseten_accepts_api_key_alias() -> None:
     """Test ChatBaseten accepts inherited `api_key` alias."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         api_key=SecretStr("test_key"),
     )
 
@@ -97,7 +97,7 @@ def test_chat_baseten_accepts_api_key_alias() -> None:
 def test_chat_baseten_accepts_base_url_alias() -> None:
     """Test ChatBaseten accepts `base_url` alias."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
         base_url="https://proxy.example/v1",
     )
@@ -109,7 +109,7 @@ def test_chat_baseten_rejects_openai_api_key_field() -> None:
     """Test ChatBaseten rejects OpenAI-specific API key field names."""
     with pytest.raises(ValueError, match="`openai_api_key` is not supported"):
         kwargs: Any = {
-            "model": "deepseek-ai/DeepSeek-V3-0324",
+            "model": "MiniMaxAI/MiniMax-M2.5",
             "openai_api_key": "test_key",
         }
         ChatBaseten(**kwargs)
@@ -119,7 +119,7 @@ def test_chat_baseten_rejects_openai_api_base_field() -> None:
     """Test ChatBaseten rejects OpenAI-specific base URL field names."""
     with pytest.raises(ValueError, match="`openai_api_base` is not supported"):
         kwargs: Any = {
-            "model": "deepseek-ai/DeepSeek-V3-0324",
+            "model": "MiniMaxAI/MiniMax-M2.5",
             "baseten_api_key": SecretStr("test_key"),
             "openai_api_base": "https://proxy.example/v1",
         }
@@ -130,7 +130,7 @@ def test_chat_baseten_rejects_invalid_n() -> None:
     """Test ChatBaseten validates `n`."""
     with pytest.raises(ValueError, match="n must be at least 1"):
         ChatBaseten(
-            model="deepseek-ai/DeepSeek-V3-0324",
+            model="MiniMaxAI/MiniMax-M2.5",
             baseten_api_key=SecretStr("test_key"),
             n=0,
         )
@@ -140,7 +140,7 @@ def test_chat_baseten_rejects_streaming_with_n_gt_1() -> None:
     """Test ChatBaseten validates streaming with `n > 1`."""
     with pytest.raises(ValueError, match="n must be 1 when streaming"):
         ChatBaseten(
-            model="deepseek-ai/DeepSeek-V3-0324",
+            model="MiniMaxAI/MiniMax-M2.5",
             baseten_api_key=SecretStr("test_key"),
             n=2,
             streaming=True,
@@ -182,7 +182,7 @@ def test_chat_baseten_dedicated_model_url_only() -> None:
 def test_chat_baseten_model_apis_default() -> None:
     """Test ChatBaseten uses Model APIs by default."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
 
@@ -196,13 +196,13 @@ def test_chat_baseten_default_model_name() -> None:
     chat = ChatBaseten(
         baseten_api_key=SecretStr("test_key"),
     )
-    assert chat.model_name == "deepseek-ai/DeepSeek-V3-0324"
+    assert chat.model_name == "MiniMaxAI/MiniMax-M2.5"
 
 
 def test_create_chat_result_with_reasoning_content() -> None:
     """Test that reasoning_content is extracted from responses."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     mock_message = MagicMock()
@@ -225,7 +225,7 @@ def test_create_chat_result_with_reasoning_content() -> None:
 def test_convert_chunk_with_reasoning_content() -> None:
     """Test that reasoning_content is extracted from streaming chunks."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     chunk: dict[str, Any] = {
@@ -258,7 +258,7 @@ def test_convert_chunk_with_reasoning_content() -> None:
 def test_convert_chunk_strips_usage_from_content_chunks() -> None:
     """Test that cumulative usage is stripped from content chunks."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     chunk: dict[str, Any] = {
@@ -303,7 +303,7 @@ def test_convert_chunk_strips_usage_from_content_chunks() -> None:
 def test_convert_chunk_keeps_usage_for_usage_only_chunks() -> None:
     """Test that usage-only chunks retain their final usage metadata."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     chunk: dict[str, Any] = {
@@ -343,7 +343,7 @@ def test_convert_chunk_keeps_usage_for_usage_only_chunks() -> None:
 def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
     """Test streamed usage metadata does not overcount cumulative Baseten usage."""
     chat = ChatBaseten(
-        model="deepseek-ai/DeepSeek-V3-0324",
+        model="MiniMaxAI/MiniMax-M2.5",
         baseten_api_key=SecretStr("test_key"),
     )
     raw_chunks: list[dict[str, Any]] = [
@@ -379,7 +379,7 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
                     "finish_reason": "stop",
                 },
             ],
-            "model": "deepseek-ai/DeepSeek-V3-0324",
+            "model": "MiniMaxAI/MiniMax-M2.5",
             "usage": {
                 "prompt_tokens": 12,
                 "completion_tokens": 5,
