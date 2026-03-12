@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import openai
 from langchain_core.language_models import LangSmithParams
@@ -14,7 +14,19 @@ from langchain_openai.chat_models.base import BaseChatOpenAI
 from pydantic import ConfigDict, Field, SecretStr, model_validator
 from typing_extensions import Self
 
+from langchain_baseten.data._profiles import _PROFILES
+
+if TYPE_CHECKING:
+    from langchain_core.language_models import ModelProfile, ModelProfileRegistry
+
 DEFAULT_API_BASE = "https://inference.baseten.co/v1"
+
+_MODEL_PROFILES = cast("ModelProfileRegistry", _PROFILES)
+
+
+def _get_default_model_profile(model_name: str) -> ModelProfile:
+    default = _MODEL_PROFILES.get(model_name) or {}
+    return default.copy()
 
 
 def _normalize_model_url(url: str) -> str:
@@ -502,6 +514,13 @@ class ChatBaseten(BaseChatOpenAI):
                 **async_specific,
             )
             self.async_client = self.root_async_client.chat.completions
+        return self
+
+    @model_validator(mode="after")
+    def _set_model_profile(self) -> Self:
+        """Set model profile if not overridden."""
+        if self.profile is None:
+            self.profile = _get_default_model_profile(self.model_name)
         return self
 
     def _create_chat_result(
