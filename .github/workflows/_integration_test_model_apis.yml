@@ -9,7 +9,7 @@ on:
         description: "From which folder this pipeline executes"
     secrets:
       BASETEN_API_KEY:
-        required: true
+        required: false
 
 env:
   UV_FROZEN: "true"
