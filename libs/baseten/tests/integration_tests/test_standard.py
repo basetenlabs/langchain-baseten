@@ -50,6 +50,19 @@ class TestBasetenStandard(ChatModelIntegrationTests):
         return True
 
     @property
+    def has_tool_choice(self) -> bool:
+        # GLM-5 does not reliably respect tool_choice="any"
+        return False
+
+    def test_tool_calling(self, model: BaseChatModel) -> None:
+        if getattr(model, "output_version", None) == "v1":
+            pytest.xfail(
+                "GLM-5 streaming with output_version='v1' does not populate "
+                "content_blocks for tool calls"
+            )
+        super().test_tool_calling(model)
+
+    @property
     def model_override_value(self) -> str:
         return os.environ.get(
             "BASETEN_MODEL_OVERRIDE",
