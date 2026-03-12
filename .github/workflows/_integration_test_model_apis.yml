@@ -1,4 +1,4 @@
-name: test
+name: integration-test-model-apis
 
 on:
   workflow_call:
@@ -13,7 +13,6 @@ on:
 
 env:
   UV_FROZEN: "true"
-  UV_NO_SYNC: "true"
   BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
 
 jobs:
@@ -27,32 +26,20 @@ jobs:
         python-version:
           - "3.10"
           - "3.12"
-    name: "make test #${{ matrix.python-version }}"
+    name: "Model APIs integration tests #${{ matrix.python-version }}"
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }} + uv
         uses: "./.github/actions/uv_setup"
-        id: setup-python
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         shell: bash
-        run: uv sync --group test --dev
+        run: uv sync --group test --group test_integration
 
-      - name: Run core tests
+      - name: Run Model APIs integration tests
         shell: bash
         run: |
-          make test
-
-      - name: Ensure the tests did not create any additional files
-        shell: bash
-        run: |
-          set -eu
-
-          STATUS="$(git status)"
-          echo "$STATUS"
-
-          # grep will exit non-zero if the target message isn't found,
-          # and `set -e` above will cause the step to fail.
-          echo "$STATUS" | grep 'nothing to commit, working tree clean'
+          uv run pytest tests/integration_tests/test_standard.py tests/integration_tests/test_reasoning.py -v
