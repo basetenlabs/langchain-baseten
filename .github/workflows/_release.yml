@@ -163,15 +163,16 @@ jobs:
         run: make tests
         working-directory: ${{ inputs.working-directory }}
 
-      - name: Run integration tests
-        env:
-          BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
-          BASETEN_EMBEDDING_MODEL_URL: ${{ secrets.BASETEN_EMBEDDING_MODEL_URL }}
-          BASETEN_DEDICATED_MODEL_URL: ${{ secrets.BASETEN_DEDICATED_MODEL_URL }}
-        run: |
-          uv sync --group test --group test_integration
-          make integration_tests
-        working-directory: ${{ inputs.working-directory }}
+      # TODO: Re-enable integration tests once dedicated/embedding models are awake
+      # - name: Run integration tests
+      #   env:
+      #     BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+      #     BASETEN_EMBEDDING_MODEL_URL: ${{ secrets.BASETEN_EMBEDDING_MODEL_URL }}
+      #     BASETEN_DEDICATED_MODEL_URL: ${{ secrets.BASETEN_DEDICATED_MODEL_URL }}
+      #   run: |
+      #     uv sync --group test --group test_integration
+      #     make integration_tests
+      #   working-directory: ${{ inputs.working-directory }}
 
       - name: Get minimum versions
         working-directory: ${{ inputs.working-directory }}
