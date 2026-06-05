@@ -9,7 +9,7 @@ import openai
 from langchain_core.language_models import LangSmithParams
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
-from langchain_core.utils import secret_from_env
+from langchain_core.utils import from_env, secret_from_env
 from langchain_openai.chat_models.base import BaseChatOpenAI
 from pydantic import ConfigDict, Field, SecretStr, model_validator
 from typing_extensions import Self
@@ -146,6 +146,9 @@ class ChatBaseten(BaseChatOpenAI):
 
         If not passed in, it is read from `BASETEN_API_KEY`.
     - `baseten_api_base`: Base URL path for API requests for Model APIs.
+
+        If not passed in, it is read from `BASETEN_API_BASE`, falling back to
+        the Model APIs default.
     - `model_url`: Optional dedicated model URL for deployed models.
 
         If provided, it overrides `baseten_api_base`. Supports `/predict`,
@@ -355,11 +358,15 @@ class ChatBaseten(BaseChatOpenAI):
     )
     """Automatically inferred from env var `BASETEN_API_KEY` if not provided."""
 
-    baseten_api_base: str = Field(default=DEFAULT_API_BASE, alias="base_url")
+    baseten_api_base: str = Field(
+        default_factory=from_env("BASETEN_API_BASE", default=DEFAULT_API_BASE),
+        alias="base_url",
+    )
     """Base URL path for API requests.
 
-    Leave as default for Model APIs, or provide dedicated model URL for
-    dedicated deployments.
+    Automatically inferred from env var `BASETEN_API_BASE` if not provided,
+    falling back to the Model APIs default. Leave as default for Model APIs, or
+    provide a dedicated model URL for dedicated deployments.
     """
 
     model_url: str | None = Field(default=None)
