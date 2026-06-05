@@ -105,6 +105,33 @@ def test_chat_baseten_accepts_base_url_alias() -> None:
     assert str(chat.root_client.base_url).rstrip("/") == "https://proxy.example/v1"
 
 
+def test_chat_baseten_reads_base_url_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test ChatBaseten reads `baseten_api_base` from `BASETEN_API_BASE`."""
+    monkeypatch.setenv("BASETEN_API_BASE", "https://env.example/v1")
+    chat = ChatBaseten(
+        model="zai-org/GLM-5",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    assert str(chat.root_client.base_url).rstrip("/") == "https://env.example/v1"
+
+
+def test_chat_baseten_base_url_arg_wins_over_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test an explicit `base_url` overrides `BASETEN_API_BASE`."""
+    monkeypatch.setenv("BASETEN_API_BASE", "https://env.example/v1")
+    chat = ChatBaseten(
+        model="zai-org/GLM-5",
+        baseten_api_key=SecretStr("test_key"),
+        base_url="https://explicit.example/v1",
+    )
+
+    assert str(chat.root_client.base_url).rstrip("/") == "https://explicit.example/v1"
+
+
 def test_chat_baseten_rejects_openai_api_key_field() -> None:
     """Test ChatBaseten rejects OpenAI-specific API key field names."""
     with pytest.raises(ValueError, match="`openai_api_key` is not supported"):
