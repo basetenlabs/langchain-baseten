@@ -1,0 +1,38 @@
+libs/baseten/langchain_baseten/chat_models.py
+  s_e34d28ad626e2a::t_2f71080a65d035 370-374
+  s_e34d28ad626e2a::t_79a61fc891ff4d 150-152
+  s_e34d28ad626e2a::t_b64f07675320d8 363-365
+libs/baseten/README.md
+  s_e34d28ad626e2a::t_b3f5aa43d5018e 63-67
+libs/baseten/tests/unit_tests/conftest.py
+  s_e34d28ad626e2a::t_c20122c985ebeb 1-15
+libs/baseten/tests/unit_tests/test_chat_models.py
+  s_e34d28ad626e2a::t_ad738af1712be0 112,122-123,127,129-130,136-137,141,143-144,153,220-235
+  s_e34d28ad626e2a::t_aae4b691330c88 111
+  s_e34d28ad626e2a::t_260ce79e7bf7a6 121
+  s_e34d28ad626e2a::t_abd8201e830e83 124-126
+  s_e34d28ad626e2a::t_19fdd9053181d1 128
+  s_e34d28ad626e2a::t_55a15e7cbb5774 131-135
+  s_e34d28ad626e2a::t_ae2a5c3a15fe70 138-140
+  s_e34d28ad626e2a::t_8d5b4e39d0abb7 142
+  s_e34d28ad626e2a::t_5ff4541a0dcdf9 145-147
+  s_e34d28ad626e2a::t_7cde0e70b7efc7 152
+  s_e34d28ad626e2a::t_71bfbb443f10c2 218-219
+  s_e34d28ad626e2a::t_6d520c1702a52f 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "4af9c3504e536df723ab4117e63ff8e90da4afe2",
+  "prompts": {},
+  "sessions": {
+    "s_e34d28ad626e2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43f5494c-e29a-4920-898c-abb2afdee46c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Mason Daugherty <github@mdrxy.com>"
+    }
+  }
+}
