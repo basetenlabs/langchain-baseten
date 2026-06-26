@@ -108,8 +108,8 @@ def test_chat_baseten_accepts_base_url_alias() -> None:
 def test_chat_baseten_reads_base_url_from_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test ChatBaseten reads `baseten_api_base` from `BASETEN_API_BASE`."""
-    monkeypatch.setenv("BASETEN_API_BASE", "https://env.example/v1")
+    """Test ChatBaseten reads the base URL from `BASETEN_BASE_URL`."""
+    monkeypatch.setenv("BASETEN_BASE_URL", "https://env.example/v1")
     chat = ChatBaseten(
         model="zai-org/GLM-5",
         baseten_api_key=SecretStr("test_key"),
@@ -118,11 +118,39 @@ def test_chat_baseten_reads_base_url_from_env(
     assert str(chat.root_client.base_url).rstrip("/") == "https://env.example/v1"
 
 
+def test_chat_baseten_falls_back_to_api_base_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test ChatBaseten falls back to `BASETEN_API_BASE`."""
+    monkeypatch.delenv("BASETEN_BASE_URL", raising=False)
+    monkeypatch.setenv("BASETEN_API_BASE", "https://api-base.example/v1")
+    chat = ChatBaseten(
+        model="zai-org/GLM-5",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    assert str(chat.root_client.base_url).rstrip("/") == "https://api-base.example/v1"
+
+
+def test_chat_baseten_base_url_env_wins_over_api_base_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test `BASETEN_BASE_URL` takes precedence over `BASETEN_API_BASE`."""
+    monkeypatch.setenv("BASETEN_BASE_URL", "https://base-url.example/v1")
+    monkeypatch.setenv("BASETEN_API_BASE", "https://api-base.example/v1")
+    chat = ChatBaseten(
+        model="zai-org/GLM-5",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    assert str(chat.root_client.base_url).rstrip("/") == "https://base-url.example/v1"
+
+
 def test_chat_baseten_base_url_arg_wins_over_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test an explicit `base_url` overrides `BASETEN_API_BASE`."""
-    monkeypatch.setenv("BASETEN_API_BASE", "https://env.example/v1")
+    """Test an explicit `base_url` overrides `BASETEN_BASE_URL`."""
+    monkeypatch.setenv("BASETEN_BASE_URL", "https://env.example/v1")
     chat = ChatBaseten(
         model="zai-org/GLM-5",
         baseten_api_key=SecretStr("test_key"),
@@ -183,6 +211,24 @@ def test_chat_baseten_dedicated_model_url() -> None:
     )
 
     # Should use the dedicated URL, converted to OpenAI-compatible format
+    expected_base_url = (
+        "https://model-123.api.baseten.co/environments/production/sync/v1"
+    )
+    assert str(chat.root_client.base_url).rstrip("/") == expected_base_url
+
+
+def test_chat_baseten_model_url_wins_over_base_url_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test `model_url` overrides `BASETEN_BASE_URL` from the env."""
+    monkeypatch.setenv("BASETEN_BASE_URL", "https://env.example/v1")
+    chat = ChatBaseten(
+        model="custom-model",
+        model_url="https://model-123.api.baseten.co/environments/production/predict",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    # The dedicated model URL should win over the env-sourced base URL
     expected_base_url = (
         "https://model-123.api.baseten.co/environments/production/sync/v1"
     )

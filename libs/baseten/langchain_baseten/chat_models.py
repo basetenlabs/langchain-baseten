@@ -147,8 +147,9 @@ class ChatBaseten(BaseChatOpenAI):
         If not passed in, it is read from `BASETEN_API_KEY`.
     - `baseten_api_base`: Base URL path for API requests for Model APIs.
 
-        If not passed in, it is read from `BASETEN_API_BASE`, falling back to
-        the Model APIs default.
+        If not passed in, it is read from `BASETEN_BASE_URL` (preferred) or
+        `BASETEN_API_BASE` (legacy fallback), falling back to the Model APIs
+        default. If both env vars are set, `BASETEN_BASE_URL` takes precedence.
     - `model_url`: Optional dedicated model URL for deployed models.
 
         If provided, it overrides `baseten_api_base`. Supports `/predict`,
@@ -359,14 +360,18 @@ class ChatBaseten(BaseChatOpenAI):
     """Automatically inferred from env var `BASETEN_API_KEY` if not provided."""
 
     baseten_api_base: str = Field(
-        default_factory=from_env("BASETEN_API_BASE", default=DEFAULT_API_BASE),
+        default_factory=from_env(
+            ["BASETEN_BASE_URL", "BASETEN_API_BASE"], default=DEFAULT_API_BASE
+        ),
         alias="base_url",
     )
     """Base URL path for API requests.
 
-    Automatically inferred from env var `BASETEN_API_BASE` if not provided,
-    falling back to the Model APIs default. Leave as default for Model APIs, or
-    provide a dedicated model URL for dedicated deployments.
+    Automatically inferred from env var `BASETEN_BASE_URL` (preferred) or
+    `BASETEN_API_BASE` (legacy fallback) if not provided; if both are set,
+    `BASETEN_BASE_URL` takes precedence. Falls back to the Model APIs default.
+    Leave as default for Model APIs, or provide a dedicated model URL for
+    dedicated deployments.
     """
 
     model_url: str | None = Field(default=None)

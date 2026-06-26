@@ -60,6 +60,11 @@ print(f"Generated {len(vectors)} embeddings of dimension {len(vectors[0])}")
 You can configure the Baseten integration using environment variables:
 
 - `BASETEN_API_KEY`: Your Baseten API key
+- `BASETEN_BASE_URL`: Custom base URL for chat model API requests; takes
+  precedence over `BASETEN_API_BASE`, and defaults to the Model APIs base URL
+  when unset
+- `BASETEN_API_BASE`: Legacy fallback for the base URL, used only when
+  `BASETEN_BASE_URL` is unset
 
 ## Deployment Options
 
