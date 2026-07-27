@@ -81,6 +81,7 @@ _PROFILES: dict[str, dict[str, Any]] = {
     },
     "moonshotai/Kimi-K2.5": {
         "name": "Kimi K2.5",
+        "status": "deprecated",
         "release_date": "2026-01-30",
         "last_updated": "2026-02-12",
         "open_weights": True,
@@ -249,6 +250,7 @@ _PROFILES: dict[str, dict[str, Any]] = {
     },
     "zai-org/GLM-5": {
         "name": "GLM 5",
+        "status": "deprecated",
         "release_date": "2026-02-12",
         "last_updated": "2026-02-12",
         "open_weights": True,

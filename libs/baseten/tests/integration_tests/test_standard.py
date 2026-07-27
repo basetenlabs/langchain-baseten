@@ -21,8 +21,8 @@ from langchain_tests.integration_tests import ChatModelIntegrationTests
 from langchain_baseten import ChatBaseten
 from tests.integration_tests._reasoning import get_reasoning_model
 
-MODEL_NAME = "zai-org/GLM-5"
-VISION_MODEL_NAME = "moonshotai/Kimi-K2.5"
+MODEL_NAME = "zai-org/GLM-5.2"
+VISION_MODEL_NAME = "moonshotai/Kimi-K2.6"
 
 pytestmark = [
     pytest.mark.requires("baseten_api_key"),
@@ -51,11 +51,11 @@ class TestBasetenStandard(ChatModelIntegrationTests):
 
     @property
     def has_tool_choice(self) -> bool:
-        # GLM-5 does not reliably respect tool_choice="any"
+        # GLM-5.2 does not reliably respect tool_choice="any"
         return False
 
     @pytest.mark.xfail(
-        reason="GLM-5 streaming with output_version='v1' does not populate "
+        reason="GLM-5.2 streaming with output_version='v1' does not populate "
         "content_blocks for tool calls",
     )
     def test_tool_calling(self, model: BaseChatModel) -> None:
@@ -124,10 +124,10 @@ def _make_small_png(width: int = 64, height: int = 64) -> bytes:
 
 
 class TestBasetenVisionStandard(ChatModelIntegrationTests):
-    """Standard suite against Kimi K2.5 (Baseten's only vision Model API).
+    """Standard suite against Kimi K2.6 (Baseten's only vision Model API).
 
     Overrides `test_image_inputs` with a small 64x64 PNG because the standard
-    suite's hardcoded 1245x1395 image exceeds Kimi K2.5's vision-encoder
+    suite's hardcoded 1245x1395 image exceeds Kimi K2.6's vision-encoder
     embedding limit (HTTP 413).
     """
 
@@ -148,9 +148,9 @@ class TestBasetenVisionStandard(ChatModelIntegrationTests):
 
 
 def test_vision_image_inputs() -> None:
-    """Test vision via Kimi K2.5 with a small image.
+    """Test vision via Kimi K2.6 with a small image.
 
-    The standard suite's hardcoded 1245x1395 image exceeds Kimi K2.5's
+    The standard suite's hardcoded 1245x1395 image exceeds Kimi K2.6's
     vision-encoder embedding limit (HTTP 413), so we test separately with
     a 64x64 solid-red PNG.
     """
