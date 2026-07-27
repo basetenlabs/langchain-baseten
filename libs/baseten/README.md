@@ -19,7 +19,7 @@ from langchain_baseten import ChatBaseten
 
 # Option 1: Use Model APIs with model slug
 model = ChatBaseten(
-    model="moonshotai/Kimi-K2-Instruct-0905",  # Choose from available model slugs: https://docs.baseten.co/development/model-apis/overview#supported-models
+    model="zai-org/GLM-5.2",  # Choose from available model slugs: https://docs.baseten.co/development/model-apis/overview#supported-models
     api_key="your-api-key",  # Or set BASETEN_API_KEY env var
 )
 
