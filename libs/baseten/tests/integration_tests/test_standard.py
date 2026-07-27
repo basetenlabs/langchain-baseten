@@ -21,8 +21,8 @@ from langchain_tests.integration_tests import ChatModelIntegrationTests
 from langchain_baseten import ChatBaseten
 from tests.integration_tests._reasoning import get_reasoning_model
 
-MODEL_NAME = "zai-org/GLM-5"
-VISION_MODEL_NAME = "moonshotai/Kimi-K2.5"
+MODEL_NAME = "zai-org/GLM-5.2"
+VISION_MODEL_NAME = "thinkingmachines/inkling"
 
 pytestmark = [
     pytest.mark.requires("baseten_api_key"),
