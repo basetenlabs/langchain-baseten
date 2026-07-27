@@ -22,8 +22,8 @@ classifiers = [
 version = "0.2.1"
 requires-python = ">=3.10.0,<4.0.0"
 dependencies = [
-    "langchain-core>=1.2.18,<2.0.0",
-    "langchain-openai>=1.1.11,<2.0.0",
+    "langchain-core>=1.5.1,<2.0.0",
+    "langchain-openai>=1.4.1,<2.0.0",
     "baseten-performance-client>=0.0.11",
 ]
 
