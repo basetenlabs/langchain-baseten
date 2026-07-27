@@ -16,7 +16,7 @@ class TestBasetenStandard(ChatModelUnitTests):
     @property
     def chat_model_params(self) -> dict:
         return {
-            "model": "zai-org/GLM-5",
+            "model": "zai-org/GLM-5.2",
             "api_key": "test_api_key",
         }
 
@@ -27,7 +27,7 @@ class TestBasetenStandard(ChatModelUnitTests):
                 "BASETEN_API_KEY": "api_key",
             },
             {
-                "model": "zai-org/GLM-5",
+                "model": "zai-org/GLM-5.2",
             },
             {
                 "baseten_api_key": "api_key",
