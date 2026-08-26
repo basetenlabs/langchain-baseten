@@ -128,8 +128,9 @@ def _normalize_stream_usage_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
     `_StreamUsageNormalizer` strips usage from every content chunk and
     remembers the latest cumulative values: when a usage-only chunk arrives it
     carries the totals, and when the stream instead terminates without usage
-    (e.g. a final `choices: []` chunk with `usage=None`), the remembered values
-    are re-attached there so one request's usage is reported exactly once.
+    (e.g. a final `choices: []` chunk, or a final content chunk with
+    `finish_reason` set and `usage=None`), the remembered values are
+    re-attached there so one request's usage is reported exactly once.
     """
     if chunk.get("usage") and chunk.get("choices"):
         normalized_chunk = chunk.copy()
@@ -150,7 +151,7 @@ class _StreamUsageNormalizer:
             if chunk.get("choices"):
                 self._pending_usage = usage
             return _normalize_stream_usage_chunk(chunk)
-        if self._pending_usage is not None and not chunk.get("choices"):
+        if self._pending_usage is not None and self._is_terminal(chunk):
             # Stream ended without a usage-only chunk: re-attach the last
             # cumulative usage to this terminal chunk so it is not lost.
             normalized_chunk = chunk.copy()
@@ -158,6 +159,13 @@ class _StreamUsageNormalizer:
             self._pending_usage = None
             return normalized_chunk
         return chunk
+
+    @staticmethod
+    def _is_terminal(chunk: dict[str, Any]) -> bool:
+        choices = chunk.get("choices")
+        if not choices:
+            return True
+        return choices[0].get("finish_reason") is not None
 
 
 class ChatBaseten(BaseChatOpenAI):

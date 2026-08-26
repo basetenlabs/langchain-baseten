@@ -518,8 +518,9 @@ def test_stream_usage_aggregation_without_trailing_usage_chunk() -> None:
     """Test usage survives when the stream ends without a usage-only chunk.
 
     GLM-5.3-Flash-style stream: every content chunk carries cumulative usage
-    and no trailing usage-only chunk arrives, so the final content chunk
-    (marked by `finish_reason`) must retain the totals.
+    and no trailing usage-only chunk arrives, so the totals must be re-attached
+    to the terminal chunk (the final content chunk with `finish_reason` set
+    and `usage=None`).
     """
     chat = ChatBaseten(
         model="zai-org/GLM-5.3-Flash",
@@ -555,7 +556,7 @@ def test_stream_usage_aggregation_without_trailing_usage_chunk() -> None:
                     "delta": {
                         "content": " there",
                     },
-                    "finish_reason": "stop",
+                    "finish_reason": None,
                 },
             ],
             "model": "zai-org/GLM-5.3-Flash",
@@ -574,7 +575,14 @@ def test_stream_usage_aggregation_without_trailing_usage_chunk() -> None:
             },
         },
         {
-            "choices": [],
+            "choices": [
+                {
+                    "delta": {
+                        "content": None,
+                    },
+                    "finish_reason": "stop",
+                },
+            ],
             "usage": None,
         },
     ]
