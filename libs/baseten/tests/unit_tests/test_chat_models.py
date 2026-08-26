@@ -10,6 +10,7 @@ from openai import BaseModel
 from pydantic import SecretStr
 
 from langchain_baseten import ChatBaseten
+from langchain_baseten.chat_models import _StreamUsageNormalizer
 
 
 class MockOpenAIResponse(BaseModel):
@@ -486,6 +487,7 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
     ]
 
     full: AIMessageChunk | None = None
+    chat._stream_usage_normalizer = _StreamUsageNormalizer()
     for raw_chunk in raw_chunks:
         chunk_result = chat._convert_chunk_to_generation_chunk(
             raw_chunk,
@@ -495,6 +497,98 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
         if chunk_result is None:
             msg = "Expected chunk_result not to be None"
             raise AssertionError(msg)
+        message = chunk_result.message
+        if not isinstance(message, AIMessageChunk):
+            msg = "Expected AIMessageChunk"
+            raise AssertionError(msg)
+        full = message if full is None else full + message
+
+    if full is None:
+        msg = "Expected aggregated chunk"
+        raise AssertionError(msg)
+
+    assert full.content == "Hello there"
+    assert full.usage_metadata is not None
+    assert full.usage_metadata["input_tokens"] == 12
+    assert full.usage_metadata["output_tokens"] == 5
+    assert full.usage_metadata["total_tokens"] == 17
+
+
+def test_stream_usage_aggregation_without_trailing_usage_chunk() -> None:
+    """Test usage survives when the stream ends without a usage-only chunk.
+
+    GLM-5.3-Flash-style stream: every content chunk carries cumulative usage
+    and no trailing usage-only chunk arrives, so the final content chunk
+    (marked by `finish_reason`) must retain the totals.
+    """
+    chat = ChatBaseten(
+        model="zai-org/GLM-5.3-Flash",
+        baseten_api_key=SecretStr("test_key"),
+    )
+    raw_chunks: list[dict[str, Any]] = [
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "role": "assistant",
+                        "content": "Hello",
+                    },
+                },
+            ],
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 1,
+                "total_tokens": 13,
+                "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0,
+                },
+                "completion_tokens_details": {
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                },
+            },
+        },
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "content": " there",
+                    },
+                    "finish_reason": "stop",
+                },
+            ],
+            "model": "zai-org/GLM-5.3-Flash",
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 5,
+                "total_tokens": 17,
+                "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0,
+                },
+                "completion_tokens_details": {
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                },
+            },
+        },
+        {
+            "choices": [],
+            "usage": None,
+        },
+    ]
+
+    full: AIMessageChunk | None = None
+    chat._stream_usage_normalizer = _StreamUsageNormalizer()
+    for raw_chunk in raw_chunks:
+        chunk_result = chat._convert_chunk_to_generation_chunk(
+            raw_chunk,
+            AIMessageChunk,
+            None,
+        )
+        if chunk_result is None:
+            continue
         message = chunk_result.message
         if not isinstance(message, AIMessageChunk):
             msg = "Expected AIMessageChunk"

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import re
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING, Any, cast
 
 import openai
+from langchain_core.callbacks import (
+    AsyncCallbackManagerForLLMRun,
+    CallbackManagerForLLMRun,
+)
 from langchain_core.language_models import LangSmithParams
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.utils import from_env, secret_from_env
 from langchain_core.utils._gateway import _apply_gateway_config
@@ -114,16 +119,45 @@ def _normalize_tool_call_chunks(chunk: dict[str, Any]) -> dict[str, Any]:
 def _normalize_stream_usage_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
     """Normalize Baseten stream usage to match OpenAI's final-usage-chunk semantics.
 
-    Baseten currently returns cumulative token usage on every streamed content chunk
-    and repeats the final totals in a trailing usage-only chunk. LangChain's chunk
-    aggregation sums usage metadata across chunks, so we keep usage only on the
-    usage-only chunk and strip it from chunks that also contain choices.
+    Baseten returns cumulative token usage on every streamed content chunk.
+    LangChain's chunk aggregation sums usage metadata across chunks, so usage
+    must survive on exactly one chunk per stream. Some models (e.g. GLM-5.2)
+    repeat the final totals in a trailing usage-only chunk (`choices: []`);
+    others (e.g. GLM-5.3-Flash) end the stream on the last content chunk
+    instead. That difference is only knowable in hindsight, so
+    `_StreamUsageNormalizer` strips usage from every content chunk and
+    remembers the latest cumulative values: when a usage-only chunk arrives it
+    carries the totals, and when the stream instead terminates without usage
+    (e.g. a final `choices: []` chunk with `usage=None`), the remembered values
+    are re-attached there so one request's usage is reported exactly once.
     """
     if chunk.get("usage") and chunk.get("choices"):
         normalized_chunk = chunk.copy()
         normalized_chunk.pop("usage", None)
         return normalized_chunk
     return chunk
+
+
+class _StreamUsageNormalizer:
+    """Per-stream state machine applying `_normalize_stream_usage_chunk` semantics."""
+
+    def __init__(self) -> None:
+        self._pending_usage: dict[str, Any] | None = None
+
+    def __call__(self, chunk: dict[str, Any]) -> dict[str, Any]:
+        usage = chunk.get("usage")
+        if usage:
+            if chunk.get("choices"):
+                self._pending_usage = usage
+            return _normalize_stream_usage_chunk(chunk)
+        if self._pending_usage is not None and not chunk.get("choices"):
+            # Stream ended without a usage-only chunk: re-attach the last
+            # cumulative usage to this terminal chunk so it is not lost.
+            normalized_chunk = chunk.copy()
+            normalized_chunk["usage"] = self._pending_usage
+            self._pending_usage = None
+            return normalized_chunk
+        return chunk
 
 
 class ChatBaseten(BaseChatOpenAI):
@@ -386,6 +420,9 @@ class ChatBaseten(BaseChatOpenAI):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    _stream_usage_normalizer: _StreamUsageNormalizer | None = None
+    """Per-stream usage normalizer, reset on each (a)stream call."""
+
     @model_validator(mode="before")
     @classmethod
     def normalize_client_config(cls, values: Any) -> Any:
@@ -575,6 +612,35 @@ class ChatBaseten(BaseChatOpenAI):
 
         return rtn
 
+    def _stream(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        *,
+        stream_usage: bool | None = None,
+        **kwargs: Any,
+    ) -> Iterator[ChatGenerationChunk]:
+        self._stream_usage_normalizer = _StreamUsageNormalizer()
+        yield from super()._stream(
+            messages, stop, run_manager, stream_usage=stream_usage, **kwargs
+        )
+
+    async def _astream(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        *,
+        stream_usage: bool | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[ChatGenerationChunk]:
+        self._stream_usage_normalizer = _StreamUsageNormalizer()
+        async for chunk in super()._astream(
+            messages, stop, run_manager, stream_usage=stream_usage, **kwargs
+        ):
+            yield chunk
+
     def _convert_chunk_to_generation_chunk(
         self,
         chunk: dict,
@@ -583,7 +649,12 @@ class ChatBaseten(BaseChatOpenAI):
     ) -> ChatGenerationChunk | None:
         """Convert a chunk, adding Baseten provider metadata."""
         chunk = _normalize_tool_call_chunks(chunk)
-        chunk = _normalize_stream_usage_chunk(chunk)
+        normalizer = self._stream_usage_normalizer
+        chunk = (
+            normalizer(chunk)
+            if normalizer is not None
+            else _normalize_stream_usage_chunk(chunk)
+        )
         generation_chunk = super()._convert_chunk_to_generation_chunk(
             chunk,
             default_chunk_class,
