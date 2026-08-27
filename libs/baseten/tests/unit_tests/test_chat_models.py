@@ -1,11 +1,13 @@
 """Test ChatBaseten chat model."""
 
+import asyncio
 import os
 from typing import Any, Literal
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessageChunk, HumanMessage
+from langchain_core.outputs import ChatGenerationChunk
 from openai import BaseModel
 from pydantic import SecretStr
 
@@ -414,7 +416,7 @@ def test_convert_chunk_keeps_usage_for_usage_only_chunks() -> None:
 
 
 def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
-    """Test streamed usage metadata does not overcount cumulative Baseten usage."""
+    """Test a finish chunk before usage-only metadata does not double-count."""
     chat = ChatBaseten(
         model="zai-org/GLM-5.2",
         baseten_api_key=SecretStr("test_key"),
@@ -449,7 +451,7 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
                     "delta": {
                         "content": " there",
                     },
-                    "finish_reason": "stop",
+                    "finish_reason": None,
                 },
             ],
             "model": "zai-org/GLM-5.2",
@@ -466,6 +468,17 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
                     "reasoning_tokens": 0,
                 },
             },
+        },
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "content": None,
+                    },
+                    "finish_reason": "stop",
+                },
+            ],
+            "usage": None,
         },
         {
             "choices": [],
@@ -485,16 +498,114 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
         },
     ]
 
+    response = MagicMock()
+    response.__enter__.return_value = iter(raw_chunks)
+    client = MagicMock()
+    client.create.return_value = response
+    chat.client = client
+
     full: AIMessageChunk | None = None
-    for raw_chunk in raw_chunks:
-        chunk_result = chat._convert_chunk_to_generation_chunk(
-            raw_chunk,
-            AIMessageChunk,
-            None,
-        )
-        if chunk_result is None:
-            msg = "Expected chunk_result not to be None"
+    usage_chunks = 0
+    for chunk_result in chat._stream([HumanMessage(content="Hello")]):
+        message = chunk_result.message
+        if not isinstance(message, AIMessageChunk):
+            msg = "Expected AIMessageChunk"
             raise AssertionError(msg)
+        usage_chunks += message.usage_metadata is not None
+        full = message if full is None else full + message
+
+    if full is None:
+        msg = "Expected aggregated chunk"
+        raise AssertionError(msg)
+
+    assert full.content == "Hello there"
+    assert full.usage_metadata is not None
+    assert full.usage_metadata["input_tokens"] == 12
+    assert full.usage_metadata["output_tokens"] == 5
+    assert full.usage_metadata["total_tokens"] == 17
+    assert usage_chunks == 1
+
+
+def test_stream_usage_aggregation_without_trailing_usage_chunk() -> None:
+    """Test usage survives when the stream ends without a usage-only chunk.
+
+    GLM-5.3-Flash-style stream: every content chunk carries cumulative usage
+    and no trailing usage-only chunk arrives, so the totals must be emitted
+    once the iterator is exhausted.
+    """
+    chat = ChatBaseten(
+        model="zai-org/GLM-5.3-Flash",
+        baseten_api_key=SecretStr("test_key"),
+    )
+    raw_chunks: list[dict[str, Any]] = [
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "role": "assistant",
+                        "content": "Hello",
+                    },
+                },
+            ],
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 1,
+                "total_tokens": 13,
+                "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0,
+                },
+                "completion_tokens_details": {
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                },
+            },
+        },
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "content": " there",
+                    },
+                    "finish_reason": None,
+                },
+            ],
+            "model": "zai-org/GLM-5.3-Flash",
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 5,
+                "total_tokens": 17,
+                "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0,
+                },
+                "completion_tokens_details": {
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                },
+            },
+        },
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "content": None,
+                    },
+                    "finish_reason": "stop",
+                },
+            ],
+            "usage": None,
+        },
+    ]
+
+    response = MagicMock()
+    response.__enter__.return_value = iter(raw_chunks)
+    client = MagicMock()
+    client.create.return_value = response
+    chat.client = client
+
+    full: AIMessageChunk | None = None
+    for chunk_result in chat._stream([HumanMessage(content="Hello")]):
         message = chunk_result.message
         if not isinstance(message, AIMessageChunk):
             msg = "Expected AIMessageChunk"
@@ -510,6 +621,180 @@ def test_stream_usage_aggregation_uses_only_final_usage_chunk() -> None:
     assert full.usage_metadata["input_tokens"] == 12
     assert full.usage_metadata["output_tokens"] == 5
     assert full.usage_metadata["total_tokens"] == 17
+
+
+def test_overlapping_streams_keep_usage_separate() -> None:
+    """Test concurrent streams on one model do not share token usage state."""
+    chat = ChatBaseten(
+        model="zai-org/GLM-5.3-Flash",
+        baseten_api_key=SecretStr("test_key"),
+    )
+    first_chunks = [
+        {
+            "choices": [{"delta": {"content": "first"}}],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 1,
+                "total_tokens": 11,
+            },
+        },
+        {
+            "choices": [{"delta": {"content": None}, "finish_reason": "stop"}],
+            "usage": None,
+        },
+    ]
+    second_chunks = [
+        {
+            "choices": [{"delta": {"content": "second"}}],
+            "usage": {
+                "prompt_tokens": 20,
+                "completion_tokens": 2,
+                "total_tokens": 22,
+            },
+        },
+        {
+            "choices": [{"delta": {"content": None}, "finish_reason": "stop"}],
+            "usage": None,
+        },
+    ]
+    responses = []
+    for chunks in (first_chunks, second_chunks):
+        response = MagicMock()
+        response.__enter__.return_value = iter(chunks)
+        responses.append(response)
+    client = MagicMock()
+    client.create.side_effect = responses
+    chat.client = client
+
+    first_stream = chat._stream([HumanMessage(content="first")])
+    second_stream = chat._stream([HumanMessage(content="second")])
+    first_results = [next(first_stream)]
+    second_results = [next(second_stream)]
+    first_results.extend(first_stream)
+    second_results.extend(second_stream)
+
+    def aggregate(results: list[ChatGenerationChunk]) -> AIMessageChunk:
+        full: AIMessageChunk | None = None
+        for result in results:
+            message = result.message
+            if not isinstance(message, AIMessageChunk):
+                msg = "Expected AIMessageChunk"
+                raise AssertionError(msg)
+            full = message if full is None else full + message
+        if full is None:
+            msg = "Expected streamed chunks"
+            raise AssertionError(msg)
+        return full
+
+    first_full = aggregate(first_results)
+    second_full = aggregate(second_results)
+
+    assert first_full.usage_metadata == {
+        "input_tokens": 10,
+        "output_tokens": 1,
+        "total_tokens": 11,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
+    assert second_full.usage_metadata == {
+        "input_tokens": 20,
+        "output_tokens": 2,
+        "total_tokens": 22,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
+
+
+async def test_overlapping_async_streams_keep_usage_separate() -> None:
+    """Test concurrent async tasks on one model do not share token usage state."""
+    chat = ChatBaseten(
+        model="zai-org/GLM-5.3-Flash",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    def make_chunks(name: str, prompt_tokens: int, completion_tokens: int) -> list:
+        return [
+            {
+                "choices": [{"delta": {"content": name}}],
+                "usage": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                },
+            },
+            {
+                "choices": [{"delta": {"content": None}, "finish_reason": "stop"}],
+                "usage": None,
+            },
+        ]
+
+    first_chunks = make_chunks("first", 10, 1)
+    second_chunks = make_chunks("second", 20, 2)
+
+    class FakeAsyncStream:
+        def __init__(self, chunks: list) -> None:
+            self._chunks = chunks
+
+        async def __aenter__(self) -> "FakeAsyncStream":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        def __aiter__(self) -> "FakeAsyncStream":
+            return self
+
+        async def __anext__(self) -> dict:
+            if not self._chunks:
+                raise StopAsyncIteration
+            # Yield to the event loop so the other task interleaves here.
+            await asyncio.sleep(0)
+            return self._chunks.pop(0)
+
+    client = MagicMock()
+    client.create = AsyncMock(
+        side_effect=[FakeAsyncStream(first_chunks), FakeAsyncStream(second_chunks)]
+    )
+    chat.async_client = client
+
+    async def collect(stream: Any) -> list[ChatGenerationChunk]:
+        return [chunk async for chunk in stream]
+
+    first_results, second_results = await asyncio.gather(
+        collect(chat._astream([HumanMessage(content="first")])),
+        collect(chat._astream([HumanMessage(content="second")])),
+    )
+
+    def aggregate(results: list[ChatGenerationChunk]) -> AIMessageChunk:
+        full: AIMessageChunk | None = None
+        for result in results:
+            message = result.message
+            if not isinstance(message, AIMessageChunk):
+                msg = "Expected AIMessageChunk"
+                raise AssertionError(msg)
+            full = message if full is None else full + message
+        if full is None:
+            msg = "Expected streamed chunks"
+            raise AssertionError(msg)
+        return full
+
+    first_full = aggregate(first_results)
+    second_full = aggregate(second_results)
+
+    assert first_full.usage_metadata == {
+        "input_tokens": 10,
+        "output_tokens": 1,
+        "total_tokens": 11,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
+    assert second_full.usage_metadata == {
+        "input_tokens": 20,
+        "output_tokens": 2,
+        "total_tokens": 22,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
 
 
 def test_streaming_tool_call_chunks_with_unique_ids_merge_correctly() -> None:
