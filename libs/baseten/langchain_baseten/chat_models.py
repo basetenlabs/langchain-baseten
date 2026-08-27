@@ -643,6 +643,10 @@ class ChatBaseten(BaseChatOpenAI):
         stream = super()._stream(
             messages, stop, run_manager, stream_usage=stream_usage, **kwargs
         )
+        # Only used to convert the fallback usage chunk from
+        # `normalizer.finish()`, which is non-None only after a content chunk
+        # with usage arrived. The fallback chunk has no choices, so the class
+        # is always instantiated as an empty message; AIMessageChunk is fine.
         default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
         try:
             while True:
@@ -653,7 +657,6 @@ class ChatBaseten(BaseChatOpenAI):
                     break
                 finally:
                     _active_stream_usage_normalizer.reset(token)
-                default_chunk_class = generation_chunk.message.__class__
                 yield generation_chunk
         finally:
             if close := getattr(stream, "close", None):
@@ -684,6 +687,7 @@ class ChatBaseten(BaseChatOpenAI):
         stream = super()._astream(
             messages, stop, run_manager, stream_usage=stream_usage, **kwargs
         )
+        # See `_stream` for why AIMessageChunk is a safe fixed default here.
         default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
         try:
             while True:
@@ -694,7 +698,6 @@ class ChatBaseten(BaseChatOpenAI):
                     break
                 finally:
                     _active_stream_usage_normalizer.reset(token)
-                default_chunk_class = generation_chunk.message.__class__
                 yield generation_chunk
         finally:
             if aclose := getattr(stream, "aclose", None):
