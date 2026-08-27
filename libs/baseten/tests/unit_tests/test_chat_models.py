@@ -1,8 +1,9 @@
 """Test ChatBaseten chat model."""
 
+import asyncio
 import os
 from typing import Any, Literal
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessageChunk, HumanMessage
@@ -671,6 +672,98 @@ def test_overlapping_streams_keep_usage_separate() -> None:
     second_results = [next(second_stream)]
     first_results.extend(first_stream)
     second_results.extend(second_stream)
+
+    def aggregate(results: list[ChatGenerationChunk]) -> AIMessageChunk:
+        full: AIMessageChunk | None = None
+        for result in results:
+            message = result.message
+            if not isinstance(message, AIMessageChunk):
+                msg = "Expected AIMessageChunk"
+                raise AssertionError(msg)
+            full = message if full is None else full + message
+        if full is None:
+            msg = "Expected streamed chunks"
+            raise AssertionError(msg)
+        return full
+
+    first_full = aggregate(first_results)
+    second_full = aggregate(second_results)
+
+    assert first_full.usage_metadata == {
+        "input_tokens": 10,
+        "output_tokens": 1,
+        "total_tokens": 11,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
+    assert second_full.usage_metadata == {
+        "input_tokens": 20,
+        "output_tokens": 2,
+        "total_tokens": 22,
+        "input_token_details": {},
+        "output_token_details": {},
+    }
+
+
+async def test_overlapping_async_streams_keep_usage_separate() -> None:
+    """Test concurrent async tasks on one model do not share token usage state."""
+    chat = ChatBaseten(
+        model="zai-org/GLM-5.3-Flash",
+        baseten_api_key=SecretStr("test_key"),
+    )
+
+    def make_chunks(name: str, prompt_tokens: int, completion_tokens: int) -> list:
+        return [
+            {
+                "choices": [{"delta": {"content": name}}],
+                "usage": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                },
+            },
+            {
+                "choices": [{"delta": {"content": None}, "finish_reason": "stop"}],
+                "usage": None,
+            },
+        ]
+
+    first_chunks = make_chunks("first", 10, 1)
+    second_chunks = make_chunks("second", 20, 2)
+
+    class FakeAsyncStream:
+        def __init__(self, chunks: list) -> None:
+            self._chunks = chunks
+
+        async def __aenter__(self) -> "FakeAsyncStream":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        def __aiter__(self) -> "FakeAsyncStream":
+            return self
+
+        async def __anext__(self) -> dict:
+            if not self._chunks:
+                raise StopAsyncIteration
+            # Yield to the event loop so the other task interleaves here.
+            await asyncio.sleep(0)
+            return self._chunks.pop(0)
+
+    client = MagicMock()
+    client.create = AsyncMock(
+        side_effect=[FakeAsyncStream(first_chunks), FakeAsyncStream(second_chunks)]
+    )
+    chat.async_client = client
+
+    async def collect(stream: Any) -> list[ChatGenerationChunk]:
+        return [chunk async for chunk in stream]
+
+    first_results, second_results = await asyncio.gather(
+        collect(chat._astream([HumanMessage(content="first")])),
+        collect(chat._astream([HumanMessage(content="second")])),
+    )
 
     def aggregate(results: list[ChatGenerationChunk]) -> AIMessageChunk:
         full: AIMessageChunk | None = None
