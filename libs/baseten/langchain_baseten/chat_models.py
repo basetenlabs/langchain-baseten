@@ -118,19 +118,11 @@ def _normalize_tool_call_chunks(chunk: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_stream_usage_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
-    """Normalize Baseten stream usage to match OpenAI's final-usage-chunk semantics.
+    """Strip cumulative usage from a chunk that also carries `choices`.
 
-    Baseten returns cumulative token usage on every streamed content chunk.
-    LangChain's chunk aggregation sums usage metadata across chunks, so usage
-    must survive on exactly one chunk per stream. Some models (e.g. GLM-5.2)
-    repeat the final totals in a trailing usage-only chunk (`choices: []`);
-    others (e.g. GLM-5.3-Flash) end the stream on the last content chunk
-    instead. That difference is only knowable in hindsight, so
-    `_StreamUsageNormalizer` strips usage from every content chunk and
-    remembers the latest cumulative values: when a usage-only chunk arrives it
-    carries the totals, and when the iterator instead ends without one, the
-    remembered values are emitted in a synthetic usage-only chunk so one
-    request's usage is reported exactly once.
+    LangChain's chunk aggregation sums usage metadata, so usage must survive on
+    at most one chunk per stream. Usage-only chunks pass through untouched; see
+    `_StreamUsageNormalizer` for the per-stream bookkeeping around this.
     """
     if chunk.get("usage") and chunk.get("choices"):
         normalized_chunk = chunk.copy()
@@ -140,7 +132,26 @@ def _normalize_stream_usage_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
 
 
 class _StreamUsageNormalizer:
-    """Per-stream state machine applying `_normalize_stream_usage_chunk` semantics."""
+    """Tracks cumulative stream usage so it is reported exactly once.
+
+    Baseten returns cumulative token usage on every streamed content chunk, and
+    LangChain's aggregation sums usage metadata across chunks, so usage must
+    survive on exactly one chunk per stream.
+
+    Streams end in one of two shapes, and which one is only knowable in
+    hindsight: some finish with a trailing usage-only chunk carrying the final
+    totals (a chunk with no `choices` -- absent, `null`, or `[]`); others end on
+    the last content chunk, whose usage would otherwise be stripped and lost.
+
+    So usage is stripped from every content chunk while the latest cumulative
+    values are remembered. A real usage-only chunk supersedes them; if the
+    iterator ends without one, `finish` emits them as a synthetic usage-only
+    chunk.
+
+    Not safe for concurrent use: one instance tracks one stream. `_stream` and
+    `_astream` scope an instance per call via
+    `_active_stream_usage_normalizer`.
+    """
 
     def __init__(self) -> None:
         self._pending_usage: dict[str, Any] | None = None
