@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import AsyncIterator, Iterator
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, cast
 
 import openai
@@ -12,7 +13,7 @@ from langchain_core.callbacks import (
     CallbackManagerForLLMRun,
 )
 from langchain_core.language_models import LangSmithParams
-from langchain_core.messages import AIMessageChunk, BaseMessage
+from langchain_core.messages import AIMessageChunk, BaseMessage, BaseMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.utils import from_env, secret_from_env
 from langchain_core.utils._gateway import _apply_gateway_config
@@ -127,10 +128,9 @@ def _normalize_stream_usage_chunk(chunk: dict[str, Any]) -> dict[str, Any]:
     instead. That difference is only knowable in hindsight, so
     `_StreamUsageNormalizer` strips usage from every content chunk and
     remembers the latest cumulative values: when a usage-only chunk arrives it
-    carries the totals, and when the stream instead terminates without usage
-    (e.g. a final `choices: []` chunk, or a final content chunk with
-    `finish_reason` set and `usage=None`), the remembered values are
-    re-attached there so one request's usage is reported exactly once.
+    carries the totals, and when the iterator instead ends without one, the
+    remembered values are emitted in a synthetic usage-only chunk so one
+    request's usage is reported exactly once.
     """
     if chunk.get("usage") and chunk.get("choices"):
         normalized_chunk = chunk.copy()
@@ -150,22 +150,24 @@ class _StreamUsageNormalizer:
         if usage:
             if chunk.get("choices"):
                 self._pending_usage = usage
+            else:
+                # A real usage-only chunk supersedes the fallback.
+                self._pending_usage = None
             return _normalize_stream_usage_chunk(chunk)
-        if self._pending_usage is not None and self._is_terminal(chunk):
-            # Stream ended without a usage-only chunk: re-attach the last
-            # cumulative usage to this terminal chunk so it is not lost.
-            normalized_chunk = chunk.copy()
-            normalized_chunk["usage"] = self._pending_usage
-            self._pending_usage = None
-            return normalized_chunk
         return chunk
 
-    @staticmethod
-    def _is_terminal(chunk: dict[str, Any]) -> bool:
-        choices = chunk.get("choices")
-        if not choices:
-            return True
-        return choices[0].get("finish_reason") is not None
+    def finish(self) -> dict[str, Any] | None:
+        """Return fallback usage after the stream is known to be exhausted."""
+        if self._pending_usage is None:
+            return None
+        chunk = {"choices": [], "usage": self._pending_usage}
+        self._pending_usage = None
+        return chunk
+
+
+_active_stream_usage_normalizer: ContextVar[_StreamUsageNormalizer | None] = ContextVar(
+    "active_stream_usage_normalizer", default=None
+)
 
 
 class ChatBaseten(BaseChatOpenAI):
@@ -428,9 +430,6 @@ class ChatBaseten(BaseChatOpenAI):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    _stream_usage_normalizer: _StreamUsageNormalizer | None = None
-    """Per-stream usage normalizer, reset on each (a)stream call."""
-
     @model_validator(mode="before")
     @classmethod
     def normalize_client_config(cls, values: Any) -> Any:
@@ -629,10 +628,37 @@ class ChatBaseten(BaseChatOpenAI):
         stream_usage: bool | None = None,
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
-        self._stream_usage_normalizer = _StreamUsageNormalizer()
-        yield from super()._stream(
+        normalizer = _StreamUsageNormalizer()
+        stream = super()._stream(
             messages, stop, run_manager, stream_usage=stream_usage, **kwargs
         )
+        default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
+        try:
+            while True:
+                token = _active_stream_usage_normalizer.set(normalizer)
+                try:
+                    generation_chunk = next(stream)
+                except StopIteration:
+                    break
+                finally:
+                    _active_stream_usage_normalizer.reset(token)
+                default_chunk_class = generation_chunk.message.__class__
+                yield generation_chunk
+        finally:
+            if close := getattr(stream, "close", None):
+                close()
+
+        usage_chunk = normalizer.finish()
+        if usage_chunk is not None:
+            final_generation_chunk = self._convert_chunk_to_generation_chunk(
+                usage_chunk, default_chunk_class, {}
+            )
+            if final_generation_chunk is not None:
+                if run_manager:
+                    run_manager.on_llm_new_token(
+                        final_generation_chunk.text, chunk=final_generation_chunk
+                    )
+                yield final_generation_chunk
 
     async def _astream(
         self,
@@ -643,11 +669,37 @@ class ChatBaseten(BaseChatOpenAI):
         stream_usage: bool | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[ChatGenerationChunk]:
-        self._stream_usage_normalizer = _StreamUsageNormalizer()
-        async for chunk in super()._astream(
+        normalizer = _StreamUsageNormalizer()
+        stream = super()._astream(
             messages, stop, run_manager, stream_usage=stream_usage, **kwargs
-        ):
-            yield chunk
+        )
+        default_chunk_class: type[BaseMessageChunk] = AIMessageChunk
+        try:
+            while True:
+                token = _active_stream_usage_normalizer.set(normalizer)
+                try:
+                    generation_chunk = await anext(stream)
+                except StopAsyncIteration:
+                    break
+                finally:
+                    _active_stream_usage_normalizer.reset(token)
+                default_chunk_class = generation_chunk.message.__class__
+                yield generation_chunk
+        finally:
+            if aclose := getattr(stream, "aclose", None):
+                await aclose()
+
+        usage_chunk = normalizer.finish()
+        if usage_chunk is not None:
+            final_generation_chunk = self._convert_chunk_to_generation_chunk(
+                usage_chunk, default_chunk_class, {}
+            )
+            if final_generation_chunk is not None:
+                if run_manager:
+                    await run_manager.on_llm_new_token(
+                        final_generation_chunk.text, chunk=final_generation_chunk
+                    )
+                yield final_generation_chunk
 
     def _convert_chunk_to_generation_chunk(
         self,
@@ -657,7 +709,7 @@ class ChatBaseten(BaseChatOpenAI):
     ) -> ChatGenerationChunk | None:
         """Convert a chunk, adding Baseten provider metadata."""
         chunk = _normalize_tool_call_chunks(chunk)
-        normalizer = self._stream_usage_normalizer
+        normalizer = _active_stream_usage_normalizer.get()
         chunk = (
             normalizer(chunk)
             if normalizer is not None
