@@ -22,7 +22,7 @@ from langchain_baseten import ChatBaseten
 from tests.integration_tests._reasoning import get_reasoning_model
 
 MODEL_NAME = "zai-org/GLM-5.2"
-VISION_MODEL_NAME = "moonshotai/Kimi-K2.6"
+VISION_MODEL_NAME = "deepseek-ai/DeepSeek-V4.1-Flash"
 
 pytestmark = [
     pytest.mark.requires("baseten_api_key"),
@@ -124,12 +124,7 @@ def _make_small_png(width: int = 64, height: int = 64) -> bytes:
 
 
 class TestBasetenVisionStandard(ChatModelIntegrationTests):
-    """Standard suite against Kimi K2.6 (Baseten's only vision Model API).
-
-    Overrides `test_image_inputs` with a small 64x64 PNG because the standard
-    suite's hardcoded 1245x1395 image exceeds Kimi K2.6's vision-encoder
-    embedding limit (HTTP 413).
-    """
+    """Standard suite against DeepSeek V4.1 Flash with reasoning disabled."""
 
     @property
     def chat_model_class(self) -> type[BaseChatModel]:
@@ -140,6 +135,7 @@ class TestBasetenVisionStandard(ChatModelIntegrationTests):
         return {
             "model": VISION_MODEL_NAME,
             "temperature": 0,
+            "extra_body": {"reasoning_effort": "none"},
         }
 
     @property
@@ -148,13 +144,12 @@ class TestBasetenVisionStandard(ChatModelIntegrationTests):
 
 
 def test_vision_image_inputs() -> None:
-    """Test vision via Kimi K2.6 with a small image.
-
-    The standard suite's hardcoded 1245x1395 image exceeds Kimi K2.6's
-    vision-encoder embedding limit (HTTP 413), so we test separately with
-    a 64x64 solid-red PNG.
-    """
-    model = ChatBaseten(model=VISION_MODEL_NAME, temperature=0)
+    """Test vision with a 64x64 solid-red PNG in both message formats."""
+    model = ChatBaseten(
+        model=VISION_MODEL_NAME,
+        temperature=0,
+        extra_body={"reasoning_effort": "none"},
+    )
     image_data = base64.b64encode(_make_small_png()).decode("utf-8")
 
     # OpenAI CC format, base64 data
