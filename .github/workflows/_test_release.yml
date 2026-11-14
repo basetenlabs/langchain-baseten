@@ -27,7 +27,7 @@ jobs:
       version: ${{ steps.check-version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Set up Python + uv
         uses: "./.github/actions/uv_setup"
@@ -50,7 +50,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
       - name: Upload build
-        uses: actions/upload-artifact@v4
+        uses: chainguard-actions/actions-upload-artifact@61ae9717c37cd5ac5fcaa5599c0dab961d043ecc # v4.6.2
         with:
           name: test-dist
           path: ${{ inputs.working-directory }}/dist/
@@ -83,15 +83,15 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
-      - uses: actions/download-artifact@v4
+      - uses: chainguard-actions/actions-download-artifact@75db10217d80f4a4c7e15d54b2dd9adfc6c78f83 # v4.3.0
         with:
           name: test-dist
           path: ${{ inputs.working-directory }}/dist/
 
       - name: Publish to test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: ${{ inputs.working-directory }}/dist/
           verbose: true
