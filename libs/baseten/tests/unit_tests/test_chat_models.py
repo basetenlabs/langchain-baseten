@@ -1,13 +1,24 @@
 """Test ChatBaseten chat model."""
 
 import asyncio
+import json
 import os
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
-from langchain_core.messages import AIMessageChunk, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.outputs import ChatGenerationChunk
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import Runnable
+from langchain_core.tools import tool
 from openai import BaseModel
 from pydantic import SecretStr
 
@@ -1004,3 +1015,314 @@ def test_reasoning_effort_is_included_in_payload() -> None:
     payload = chat._get_request_payload([("user", "What is the sum of 2 and 2?")])
 
     assert payload["reasoning_effort"] == "high"
+
+
+# ---------------------------------------------------------------------------
+# Reasoning-history round-tripping
+# ---------------------------------------------------------------------------
+
+_CallMode = Literal["invoke", "ainvoke", "stream", "astream"]
+_CALL_MODES: tuple[_CallMode, ...] = ("invoke", "ainvoke", "stream", "astream")
+
+
+class _FakeBasetenServer:
+    """Scripted chat-completions endpoint that records outgoing request bodies.
+
+    Each queued reply is served as a JSON body or as SSE chunks depending on the
+    request's `stream` flag, so the same script exercises every call path.
+    """
+
+    def __init__(self, replies: list[dict[str, Any]]) -> None:
+        self.replies = list(replies)
+        self.requests: list[dict[str, Any]] = []
+
+    def handle(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        self.requests.append(body)
+        reply = self.replies.pop(0)
+        if body.get("stream"):
+            return httpx.Response(
+                200,
+                content=self._sse(reply),
+                headers={"content-type": "text/event-stream"},
+            )
+        return httpx.Response(200, json=self._completion(reply))
+
+    @staticmethod
+    def _completion(reply: dict[str, Any]) -> dict[str, Any]:
+        message: dict[str, Any] = {"role": "assistant", "content": reply["content"]}
+        if "reasoning" in reply:
+            message["reasoning_content"] = "".join(reply["reasoning"])
+        if reply.get("tool_calls"):
+            message["tool_calls"] = [
+                {
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                }
+                for tc in reply["tool_calls"]
+            ]
+        return {
+            "id": "chatcmpl-test",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "test-model",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": message,
+                    "finish_reason": "tool_calls"
+                    if reply.get("tool_calls")
+                    else "stop",
+                }
+            ],
+        }
+
+    @staticmethod
+    def _sse(reply: dict[str, Any]) -> bytes:
+        deltas: list[dict[str, Any]] = [{"role": "assistant", "content": ""}]
+        # Reasoning arrives split across several deltas to exercise aggregation.
+        deltas += [{"reasoning_content": part} for part in reply.get("reasoning", [])]
+        if reply["content"]:
+            deltas.append({"content": reply["content"]})
+        for index, tc in enumerate(reply.get("tool_calls", [])):
+            deltas.append(
+                {
+                    "tool_calls": [
+                        {
+                            "index": index,
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tc["name"],
+                                "arguments": tc["arguments"],
+                            },
+                        }
+                    ]
+                }
+            )
+        finish = "tool_calls" if reply.get("tool_calls") else "stop"
+        events = [
+            {
+                "id": "chatcmpl-test",
+                "object": "chat.completion.chunk",
+                "created": 0,
+                "model": "test-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": delta,
+                        "finish_reason": finish if i == len(deltas) - 1 else None,
+                    }
+                ],
+            }
+            for i, delta in enumerate(deltas)
+        ]
+        # The stream ends at EOF without a `[DONE]` sentinel; the OpenAI SDK
+        # handles both, and EOF avoids unawaited-`aclose` warnings in async tests.
+        lines = [f"data: {json.dumps(event)}\n\n" for event in events]
+        return "".join(lines).encode()
+
+
+def _chat_with_server(server: _FakeBasetenServer) -> ChatBaseten:
+    transport = httpx.MockTransport(server.handle)
+    return ChatBaseten(
+        model="moonshotai/Kimi-K3.1-Pro",
+        baseten_api_key=SecretStr("synthetic-test-key"),
+        temperature=0.3,
+        max_retries=0,
+        stream_usage=False,
+        http_client=httpx.Client(transport=transport),
+        http_async_client=httpx.AsyncClient(transport=transport),
+    )
+
+
+async def _call(
+    chat: ChatBaseten | Runnable, messages: list[BaseMessage], mode: _CallMode
+) -> AIMessage:
+    if mode == "invoke":
+        result = chat.invoke(messages)
+    elif mode == "ainvoke":
+        result = await chat.ainvoke(messages)
+    elif mode == "stream":
+        chunks = list(chat.stream(messages))
+        result = chunks[0]
+        for chunk in chunks[1:]:
+            result += chunk
+    else:
+        chunks = [chunk async for chunk in chat.astream(messages)]
+        result = chunks[0]
+        for chunk in chunks[1:]:
+            result += chunk
+    assert isinstance(result, AIMessage)
+    return result
+
+
+@pytest.mark.parametrize("mode", _CALL_MODES)
+@pytest.mark.parametrize(
+    "reasoning_parts",
+    [["Let me ", "think ", "about it."], [""]],
+    ids=["text", "empty"],
+)
+async def test_reasoning_content_round_trips_to_next_request(
+    mode: _CallMode, reasoning_parts: list[str]
+) -> None:
+    """Reasoning from a response is sent back on the next request's history."""
+    expected_reasoning = "".join(reasoning_parts)
+    server = _FakeBasetenServer(
+        [
+            {"content": "4", "reasoning": reasoning_parts},
+            {"content": "8"},
+        ]
+    )
+    chat = _chat_with_server(server)
+
+    history: list[BaseMessage] = [HumanMessage("What is 2 + 2?")]
+    ai_message = await _call(chat, history, mode)
+    assert ai_message.additional_kwargs["reasoning_content"] == expected_reasoning
+
+    history += [ai_message, HumanMessage("Now double it.")]
+    await _call(chat, history, mode)
+
+    sent = server.requests[1]
+    assert [m["role"] for m in sent["messages"]] == ["user", "assistant", "user"]
+    assert sent["messages"][1] == {
+        "role": "assistant",
+        "content": "4",
+        "reasoning_content": expected_reasoning,
+    }
+    # Request parameters are untouched.
+    assert sent["model"] == "moonshotai/Kimi-K3.1-Pro"
+    assert sent["temperature"] == 0.3
+    assert bool(sent.get("stream")) is mode.endswith("stream")
+
+
+@pytest.mark.parametrize("mode", _CALL_MODES)
+async def test_reasoning_content_round_trips_with_tool_call_continuation(
+    mode: _CallMode,
+) -> None:
+    """Reasoning is preserved alongside tool calls and their IDs across turns."""
+
+    @tool
+    def get_weather(city: str) -> str:
+        """Get the weather for a city."""
+        return f"Sunny in {city}"
+
+    server = _FakeBasetenServer(
+        [
+            {
+                "content": "",
+                "reasoning": ["I should ", "call the tool."],
+                "tool_calls": [
+                    {
+                        "id": "call_abc123",
+                        "name": "get_weather",
+                        "arguments": '{"city": "Paris"}',
+                    }
+                ],
+            },
+            {"content": "It is sunny in Paris.", "reasoning": ["Tool said sunny."]},
+            {"content": "You're welcome."},
+        ]
+    )
+    chat = _chat_with_server(server)
+    chat_with_tools = chat.bind_tools([get_weather])
+
+    history: list[BaseMessage] = [HumanMessage("Weather in Paris?")]
+    tool_turn = await _call(chat_with_tools, history, mode)
+    assert tool_turn.tool_calls[0]["id"] == "call_abc123"
+    history += [
+        tool_turn,
+        ToolMessage("Sunny in Paris", tool_call_id="call_abc123"),
+    ]
+
+    answer = await _call(chat_with_tools, history, mode)
+    history += [answer, HumanMessage("Thanks!")]
+    await _call(chat_with_tools, history, mode)
+
+    # Tool continuation request.
+    continuation = server.requests[1]["messages"]
+    assert [m["role"] for m in continuation] == ["user", "assistant", "tool"]
+    assert continuation[1]["reasoning_content"] == "I should call the tool."
+    assert continuation[1]["tool_calls"] == [
+        {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'},
+        }
+    ]
+    assert continuation[2]["tool_call_id"] == "call_abc123"
+    assert server.requests[1]["tools"][0]["function"]["name"] == "get_weather"
+
+    # Later user turn keeps reasoning on *every* earlier assistant message.
+    later = server.requests[2]["messages"]
+    assert [m["role"] for m in later] == [
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+        "user",
+    ]
+    assert later[1]["reasoning_content"] == "I should call the tool."
+    assert later[1]["tool_calls"][0]["id"] == "call_abc123"
+    assert later[2]["tool_call_id"] == "call_abc123"
+    assert later[3]["reasoning_content"] == "Tool said sunny."
+    assert later[3]["content"] == "It is sunny in Paris."
+
+
+@pytest.mark.parametrize("mode", _CALL_MODES)
+async def test_history_without_reasoning_is_unchanged(mode: _CallMode) -> None:
+    """Assistant messages without reasoning serialize exactly as before."""
+    server = _FakeBasetenServer([{"content": "4"}, {"content": "8"}])
+    chat = _chat_with_server(server)
+
+    history: list[BaseMessage] = [HumanMessage("What is 2 + 2?")]
+    ai_message = await _call(chat, history, mode)
+    assert "reasoning_content" not in ai_message.additional_kwargs
+
+    history += [ai_message, HumanMessage("Now double it.")]
+    await _call(chat, history, mode)
+
+    assert server.requests[1]["messages"] == [
+        {"role": "user", "content": "What is 2 + 2?"},
+        {"role": "assistant", "content": "4"},
+        {"role": "user", "content": "Now double it."},
+    ]
+
+
+def test_request_payload_forwards_only_reasoning_content_without_mutation() -> None:
+    """Only `reasoning_content` is forwarded; caller messages are not mutated."""
+    chat = ChatBaseten(
+        model="moonshotai/Kimi-K3.1-Pro",
+        baseten_api_key=SecretStr("synthetic-test-key"),
+    )
+    ai_message = AIMessage(
+        content="4",
+        additional_kwargs={"reasoning_content": "2 + 2 = 4", "other_field": "x"},
+    )
+    no_reasoning = AIMessage(
+        content="ok", additional_kwargs={"reasoning_content": None}
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("human", "What is 2 + 2?"),
+            MessagesPlaceholder("history"),
+        ]
+    ).invoke({"history": [ai_message, no_reasoning, HumanMessage("Thanks")]})
+    before = prompt.model_copy(deep=True)
+
+    # Non-list input goes through the standard input normalization.
+    payload = chat._get_request_payload(prompt, stop=["END"])
+
+    assert prompt == before
+    assert ai_message.additional_kwargs == {
+        "reasoning_content": "2 + 2 = 4",
+        "other_field": "x",
+    }
+    assert payload["stop"] == ["END"]
+    assert payload["messages"] == [
+        {"role": "user", "content": "What is 2 + 2?"},
+        {"role": "assistant", "content": "4", "reasoning_content": "2 + 2 = 4"},
+        {"role": "assistant", "content": "ok"},
+        {"role": "user", "content": "Thanks"},
+    ]
