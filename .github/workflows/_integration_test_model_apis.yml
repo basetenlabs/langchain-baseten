@@ -28,7 +28,7 @@ jobs:
           - "3.12"
     name: "Model APIs integration tests #${{ matrix.python-version }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Set up Python ${{ matrix.python-version }} + uv
         uses: "./.github/actions/uv_setup"

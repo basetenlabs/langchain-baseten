@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Install Dependencies
         run: |
@@ -33,7 +33,7 @@ jobs:
         id: extract_ignore_words
 
       - name: Codespell
-        uses: codespell-project/actions-codespell@v2
+        uses: chainguard-actions/codespell-project-actions-codespell@9798dd6aca19fad3e876c1fb464297e25c644987 # v2.2
         with:
           skip: guide_imports.json
           ignore_words_list: ${{ steps.extract_ignore_words.outputs.ignore_words_list }}

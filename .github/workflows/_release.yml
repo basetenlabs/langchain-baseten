@@ -34,7 +34,7 @@ jobs:
       version: ${{ steps.check-version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Set up Python + uv
         uses: "./.github/actions/uv_setup"
@@ -57,7 +57,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
       - name: Upload build
-        uses: actions/upload-artifact@v4
+        uses: chainguard-actions/actions-upload-artifact@61ae9717c37cd5ac5fcaa5599c0dab961d043ecc # v4.6.2
         with:
           name: dist
           path: ${{ inputs.working-directory }}/dist/
@@ -94,7 +94,7 @@ jobs:
       - test-pypi-publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       # We explicitly *don't* set up caching here. This ensures our tests are
       # maximally sensitive to catching breakage.
@@ -115,7 +115,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - uses: actions/download-artifact@v4
+      - uses: chainguard-actions/actions-download-artifact@75db10217d80f4a4c7e15d54b2dd9adfc6c78f83 # v4.3.0
         with:
           name: dist
           path: ${{ inputs.working-directory }}/dist/
@@ -212,20 +212,20 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Set up Python + uv
         uses: "./.github/actions/uv_setup"
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - uses: actions/download-artifact@v4
+      - uses: chainguard-actions/actions-download-artifact@75db10217d80f4a4c7e15d54b2dd9adfc6c78f83 # v4.3.0
         with:
           name: dist
           path: ${{ inputs.working-directory }}/dist/
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: ${{ inputs.working-directory }}/dist/
           verbose: true
@@ -250,20 +250,20 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@31bbccf724702f8a0dc7a3ed7db8fcca2066babc # v4.4.0
 
       - name: Set up Python + uv
         uses: "./.github/actions/uv_setup"
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - uses: actions/download-artifact@v4
+      - uses: chainguard-actions/actions-download-artifact@75db10217d80f4a4c7e15d54b2dd9adfc6c78f83 # v4.3.0
         with:
           name: dist
           path: ${{ inputs.working-directory }}/dist/
 
       - name: Create Release
-        uses: ncipollo/release-action@v1
+        uses: chainguard-actions/ncipollo-release-action@28076a84406b6ec1cbcd5d2f918bec300ea1f891 # v1.21.0
         with:
           artifacts: "dist/*"
           token: ${{ secrets.GITHUB_TOKEN }}
