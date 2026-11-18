@@ -12,8 +12,13 @@ from langchain_core.callbacks import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
 )
-from langchain_core.language_models import LangSmithParams
-from langchain_core.messages import AIMessageChunk, BaseMessage, BaseMessageChunk
+from langchain_core.language_models import LangSmithParams, LanguageModelInput
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    BaseMessageChunk,
+)
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.utils import from_env, secret_from_env
 from langchain_core.utils._gateway import _apply_gateway_config
@@ -605,6 +610,46 @@ class ChatBaseten(BaseChatOpenAI):
         if self.profile is None:
             self.profile = _get_default_model_profile(self.model_name)
         return self
+
+    def _get_request_payload(
+        self,
+        input_: LanguageModelInput,
+        *,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ) -> dict:
+        """Build the request payload, preserving assistant `reasoning_content`.
+
+        `BaseChatOpenAI` drops `additional_kwargs["reasoning_content"]` when
+        serializing assistant messages. Some reasoning models served by Baseten
+        (e.g., Kimi) require it to be sent back in multi-turn and tool-call
+        continuations, so it is re-attached to each assistant message produced by
+        Baseten (or not tagged with a provider) here.
+        """
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        message_dicts = payload.get("messages")
+        if not isinstance(message_dicts, list):
+            return payload
+        messages = self._convert_input(input_).to_messages()
+        # The superclass serializes messages one-to-one; bail out rather than
+        # risk misattributing reasoning if that ever stops being true.
+        if len(messages) != len(message_dicts):
+            return payload
+        for message, message_dict in zip(messages, message_dicts, strict=True):
+            if not isinstance(message, AIMessage):
+                continue
+            # Replay reasoning only when the message is tagged `baseten` or has no
+            # `model_provider` (hand-built messages, or integrations that don't tag
+            # theirs); reasoning from other tagged providers may not be valid input.
+            if message.response_metadata.get("model_provider") not in (
+                None,
+                "baseten",
+            ):
+                continue
+            reasoning_content = message.additional_kwargs.get("reasoning_content")
+            if isinstance(reasoning_content, str):
+                message_dict["reasoning_content"] = reasoning_content
+        return payload
 
     def _create_chat_result(
         self,
