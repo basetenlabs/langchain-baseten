@@ -1326,3 +1326,31 @@ def test_request_payload_forwards_only_reasoning_content_without_mutation() -> N
         {"role": "assistant", "content": "ok"},
         {"role": "user", "content": "Thanks"},
     ]
+
+
+@pytest.mark.parametrize(
+    ("model_provider", "expected_reasoning"),
+    [("baseten", "2 + 2 = 4"), (None, "2 + 2 = 4"), ("deepseek", None)],
+    ids=["baseten", "untagged", "other-provider"],
+)
+def test_request_payload_forwards_reasoning_only_from_baseten_or_untagged(
+    model_provider: str | None, expected_reasoning: str | None
+) -> None:
+    """Reasoning from another provider's messages is not replayed to Baseten."""
+    chat = ChatBaseten(
+        model="moonshotai/Kimi-K3.1-Pro",
+        baseten_api_key=SecretStr("synthetic-test-key"),
+    )
+    response_metadata = {"model_provider": model_provider} if model_provider else {}
+    ai_message = AIMessage(
+        content="4",
+        additional_kwargs={"reasoning_content": "2 + 2 = 4"},
+        response_metadata=response_metadata,
+    )
+
+    payload = chat._get_request_payload([HumanMessage("2 + 2?"), ai_message])
+
+    expected: dict[str, Any] = {"role": "assistant", "content": "4"}
+    if expected_reasoning is not None:
+        expected["reasoning_content"] = expected_reasoning
+    assert payload["messages"][1] == expected

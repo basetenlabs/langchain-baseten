@@ -623,7 +623,8 @@ class ChatBaseten(BaseChatOpenAI):
         `BaseChatOpenAI` drops `additional_kwargs["reasoning_content"]` when
         serializing assistant messages. Some reasoning models served by Baseten
         (e.g., Kimi) require it to be sent back in multi-turn and tool-call
-        continuations, so it is re-attached to each assistant message here.
+        continuations, so it is re-attached to each assistant message produced by
+        Baseten (or not tagged with a provider) here.
         """
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         message_dicts = payload.get("messages")
@@ -636,6 +637,14 @@ class ChatBaseten(BaseChatOpenAI):
             return payload
         for message, message_dict in zip(messages, message_dicts, strict=True):
             if not isinstance(message, AIMessage):
+                continue
+            # Replay reasoning only when the message is tagged `baseten` or has no
+            # `model_provider` (hand-built messages, or integrations that don't tag
+            # theirs); reasoning from other tagged providers may not be valid input.
+            if message.response_metadata.get("model_provider") not in (
+                None,
+                "baseten",
+            ):
                 continue
             reasoning_content = message.additional_kwargs.get("reasoning_content")
             if isinstance(reasoning_content, str):
