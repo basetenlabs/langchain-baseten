@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock
 
@@ -1035,10 +1036,12 @@ class _FakeBasetenServer:
     def __init__(self, replies: list[dict[str, Any]]) -> None:
         self.replies = list(replies)
         self.requests: list[dict[str, Any]] = []
+        self.authorizations: list[str] = []
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         self.requests.append(body)
+        self.authorizations.append(request.headers["authorization"])
         reply = self.replies.pop(0)
         if body.get("stream"):
             return httpx.Response(
@@ -1124,11 +1127,19 @@ class _FakeBasetenServer:
         return "".join(lines).encode()
 
 
-def _chat_with_server(server: _FakeBasetenServer) -> ChatBaseten:
+_SYNTHETIC_TEST_KEY = SecretStr("synthetic-test-key")
+
+
+def _chat_with_server(
+    server: _FakeBasetenServer,
+    baseten_api_key: SecretStr
+    | Callable[[], str]
+    | Callable[[], Awaitable[str]] = _SYNTHETIC_TEST_KEY,
+) -> ChatBaseten:
     transport = httpx.MockTransport(server.handle)
     return ChatBaseten(
         model="moonshotai/Kimi-K3.1-Pro",
-        baseten_api_key=SecretStr("synthetic-test-key"),
+        baseten_api_key=baseten_api_key,
         temperature=0.3,
         max_retries=0,
         stream_usage=False,
@@ -1354,3 +1365,61 @@ def test_request_payload_forwards_reasoning_only_from_baseten_or_untagged(
     if expected_reasoning is not None:
         expected["reasoning_content"] = expected_reasoning
     assert payload["messages"][1] == expected
+
+
+# ---------------------------------------------------------------------------
+# Function API keys
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", _CALL_MODES)
+async def test_function_api_key_is_called_for_each_request(mode: _CallMode) -> None:
+    """A function key is called per request, so a refreshed token is sent."""
+    server = _FakeBasetenServer([{"content": "4"}, {"content": "8"}])
+    current = {"api_key": "token-1"}
+
+    def get_token() -> str:
+        return current["api_key"]
+
+    chat = _chat_with_server(server, baseten_api_key=get_token)
+
+    await _call(chat, [HumanMessage("What is 2 + 2?")], mode)
+    current["api_key"] = "token-2"
+    await _call(chat, [HumanMessage("What is 4 + 4?")], mode)
+
+    assert server.authorizations == ["Bearer token-1", "Bearer token-2"]
+
+
+@pytest.mark.parametrize("mode", ["ainvoke", "astream"])
+async def test_async_function_api_key_is_called_for_each_request(
+    mode: _CallMode,
+) -> None:
+    """An async function key is awaited per request on async calls."""
+    server = _FakeBasetenServer([{"content": "4"}, {"content": "8"}])
+    current = {"api_key": "token-1"}
+
+    async def get_token() -> str:
+        return current["api_key"]
+
+    chat = _chat_with_server(server, baseten_api_key=get_token)
+
+    await _call(chat, [HumanMessage("What is 2 + 2?")], mode)
+    current["api_key"] = "token-2"
+    await _call(chat, [HumanMessage("What is 4 + 4?")], mode)
+
+    assert server.authorizations == ["Bearer token-1", "Bearer token-2"]
+
+
+@pytest.mark.parametrize("mode", ["invoke", "stream"])
+async def test_async_function_api_key_rejects_sync_calls(mode: _CallMode) -> None:
+    """An async function key has no sync client, so sync calls fail clearly."""
+    server = _FakeBasetenServer([{"content": "4"}])
+
+    async def get_token() -> str:
+        return "token-1"
+
+    chat = _chat_with_server(server, baseten_api_key=get_token)
+
+    with pytest.raises(ValueError, match="Sync client is not available"):
+        await _call(chat, [HumanMessage("What is 2 + 2?")], mode)
+    assert server.authorizations == []
