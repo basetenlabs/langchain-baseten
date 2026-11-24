@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, cast
 
@@ -22,6 +22,9 @@ from langchain_core.messages import (
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.utils import from_env, secret_from_env
 from langchain_core.utils._gateway import _apply_gateway_config
+from langchain_openai.chat_models._client_utils import (
+    _resolve_sync_and_async_api_keys,
+)
 from langchain_openai.chat_models.base import BaseChatOpenAI
 from pydantic import ConfigDict, Field, SecretStr, model_validator
 from typing_extensions import Self
@@ -203,7 +206,8 @@ class ChatBaseten(BaseChatOpenAI):
 
     - `model`: Name of Baseten model to use. Optional for dedicated models.
     - `max_tokens`: Max number of tokens to generate.
-    - `baseten_api_key`: Baseten API key.
+    - `baseten_api_key`: Baseten API key, or a sync or async function that
+        returns one, for short-lived tokens that need refreshing.
 
         If not passed in, it is read from `BASETEN_API_KEY`.
     - `baseten_api_base`: Base URL path for API requests for Model APIs.
@@ -415,10 +419,18 @@ class ChatBaseten(BaseChatOpenAI):
     Optional for dedicated models.
     """
 
-    baseten_api_key: SecretStr | None = Field(
+    baseten_api_key: (
+        SecretStr | Callable[[], str] | Callable[[], Awaitable[str]] | None
+    ) = Field(
         default_factory=secret_from_env("BASETEN_API_KEY", default=None),
     )
-    """Automatically inferred from env var `BASETEN_API_KEY` if not provided."""
+    """Baseten API key, or a sync or async function that returns one.
+
+    Automatically inferred from env var `BASETEN_API_KEY` if not provided. Pass a
+    function to use short-lived tokens, such as workload identity federation
+    tokens: it is called before every request, so it can return a fresh token.
+    An async function only supports async methods (`ainvoke`, `astream`).
+    """
 
     baseten_api_base: str = Field(
         default_factory=from_env(
@@ -564,13 +576,14 @@ class ChatBaseten(BaseChatOpenAI):
             if not self.model_name:
                 self.model_name = "zai-org/GLM-5.2"
 
-        api_key = (
-            self.baseten_api_key.get_secret_value()
-            if isinstance(self.baseten_api_key, SecretStr)
-            else self.baseten_api_key
-        )
+        sync_api_key: str | Callable[[], str] | None = None
+        async_api_key: str | Callable[[], Awaitable[str]] | None = None
+        if self.baseten_api_key is not None:
+            sync_api_key, async_api_key = _resolve_sync_and_async_api_keys(
+                self.baseten_api_key
+            )
 
-        if not api_key:
+        if not async_api_key:
             msg = (
                 "BASETEN_API_KEY must be set. "
                 "You can pass it as `baseten_api_key=...` or "
@@ -581,7 +594,6 @@ class ChatBaseten(BaseChatOpenAI):
         client_params: dict = {
             k: v
             for k, v in {
-                "api_key": api_key,
                 "base_url": base_url,
                 "timeout": self.request_timeout,
                 "max_retries": self.max_retries,
@@ -591,12 +603,18 @@ class ChatBaseten(BaseChatOpenAI):
             if v is not None
         }
 
-        if not (self.client or None):
-            sync_specific: dict = {"http_client": self.http_client}
+        if not (self.client or None) and sync_api_key is not None:
+            sync_specific: dict = {
+                "api_key": sync_api_key,
+                "http_client": self.http_client,
+            }
             self.root_client = openai.OpenAI(**client_params, **sync_specific)
             self.client = self.root_client.chat.completions
         if not (self.async_client or None):
-            async_specific: dict = {"http_client": self.http_async_client}
+            async_specific: dict = {
+                "api_key": async_api_key,
+                "http_client": self.http_async_client,
+            }
             self.root_async_client = openai.AsyncOpenAI(
                 **client_params,
                 **async_specific,
